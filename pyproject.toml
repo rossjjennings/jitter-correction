@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jitter_correction"
+version = "0.1.0"
+authors = [
+    {name = "Ross Jennings", email = "ross.jennings@nanograv.org"},
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+]
+
+[project.scripts]
+jc-datagen = "jitter_correction.datagen:main"
+jc-extract-pcs = "jitter_correction.extract_pcs:main"
+jc-template-stats = "jitter_correction.template_stats:main"
+jc-pca-timing = "jitter_correction.pca_timing:main"
+jc-pca-score-timing = "jitter_correction.pca_score_timing:main"

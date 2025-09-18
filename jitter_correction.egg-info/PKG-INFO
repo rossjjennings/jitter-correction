@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: jitter_correction
+Version: 0.1.0
+Author-email: Ross Jennings <ross.jennings@nanograv.org>
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: matplotlib
