@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import svd
 
 from .toas import toa_fourier
-from .correction_utils import toa_pca
+from .correction_utils import toa_pca, plot_pcs
 from .signal import fft_roll
 
 def extract_pcs(profiles, n_pcs=None, n_iter=2, initial_template=None, return_all=False, use_trend=True):
@@ -92,51 +92,6 @@ def get_initial_template(profiles):
     n_5_percent = n//20
     sl = slice(n//2 - n_5_percent, n//2 + n_5_percent)
     return np.mean(profiles[sl], axis=0)
-
-def plot_pcs(template, pcs, eigvals, n_pcs):
-    phase = np.linspace(-0.5, 0.5, pcs.shape[-1], endpoint=False)
-    
-    fig = plt.figure(figsize=(5.4, 4.8))
-    (spec1, spec2, spec3, spec4) = mpl.gridspec.GridSpec(
-        nrows=2, ncols=2, width_ratios=(1.0, 0.25), height_ratios=(0.35, 1.0)
-    )
-    ax_main = fig.add_subplot(spec3)
-    ax_side = fig.add_subplot(spec4, sharey=ax_main)
-    ax_side.tick_params(axis='y', which='both', labelleft=False)
-    ax_top = fig.add_subplot(spec1, sharex=ax_main)
-    ax_top.tick_params(axis='x', which='both', labelbottom=False)
-
-    ax_top.plot(phase, template)
-    ax_top.set_ylabel('Template')
-
-    ax_side.scatter(eigvals, np.arange(len(eigvals)))
-    stemlines = [((0, i), (eigval, i)) for i, eigval in enumerate(eigvals)]
-    #stemlines = mpl.collections.LineCollection(stemlines)
-    #ax_side.axvline(0, color='C3', zorder=-1)
-    #ax_side.add_collection(stemlines)
-    ax_side.set_ylim(-0.75, n_pcs-0.25)
-    #ax_side.set_xlim(-0.1*np.max(eigvals), 1.1*np.max(eigvals))
-    eigvals_geom_center = np.sqrt(eigvals[0]*eigvals[n_pcs-1])
-    eigvals_span = eigvals[0]/eigvals_geom_center
-    xlim_low = eigvals_geom_center/eigvals_span**1.25
-    xlim_high = eigvals_geom_center*eigvals_span**1.25
-    ax_side.set_xlim(xlim_low, xlim_high)
-    ax_side.set_xscale('log')
-    #ax_side.invert_xaxis()
-    ax_side.invert_yaxis()
-    ax_side.set_xlabel('Eigenvalue')
-    ax_side.set_xticks([1e-2, 1e0])
-    ax_side.set_xticklabels([r'$10^{-2}$', '1'])
-
-    for i in range(n_pcs):
-        ax_main.plot(phase, -4*pcs[i]+i)
-    ax_main.set_ylabel('Principal components')
-    ax_main.set_xlabel('Phase (cycles)')
-
-    plt.minorticks_on()
-    plt.tight_layout()
-    
-    return fig, (ax_top, ax_main, ax_side)
 
 def main():
     import argparse
