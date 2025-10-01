@@ -33,7 +33,6 @@ def main():
     for i, profile in enumerate(profiles):
         result = toa_fourier(template, profile)
         toas_template_only[i] = result.toa
-
     
     if args.nmin is not None:
         best_index = np.nan
