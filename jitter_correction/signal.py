@@ -4,6 +4,7 @@ from numpy.fft import fft, ifft, fftfreq, rfft, irfft, rfftfreq
 from numpy.random import randn
 from scipy.special import sinc
 from scipy.optimize import brent, curve_fit
+import pywt
 import warnings
 import sys
 eps = sys.float_info.epsilon
@@ -142,3 +143,16 @@ def rolling_sum(arr, size):
     n = len(arr)
     s = np.cumsum(arr)
     return np.array([s[(i+size)%n]-s[i]+(i+size)//n*s[-1] for i in range(n)])
+
+# Modified from code written by E. Fonseca for PulsePortraiture
+def wavelet_smooth(prof, wavelet='db8', nlevel=5, threshtype='hard', fact=1.0):
+    nbin = prof.shape[-1]
+    # Translation-invariant (stationary) wavelet transform/denoising
+    coeffs = np.array(pywt.swt(prof, wavelet, level=nlevel, start_level=0, axis=-1))
+    # Get threshold value
+    lopt = fact * (np.median(np.abs(coeffs[0])) / 0.6745) * np.sqrt(2 * np.log(nbin))
+    # Do wavelet thresholding
+    coeffs = pywt.threshold(coeffs, lopt, mode=threshtype, substitute=0.0)
+    # Reconstruct data
+    smooth_prof = pywt.iswt(list(map(tuple, coeffs)), wavelet)
+    return smooth_prof

@@ -12,6 +12,7 @@ dependencies = [
     "numpy",
     "scipy",
     "matplotlib",
+    "pywavelets",
 ]
 
 [project.scripts]
