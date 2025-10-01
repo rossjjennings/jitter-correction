@@ -1,0 +1,13 @@
+[data]
+  n_profiles = 512
+  npprof = 1000
+  n_bins = 1024
+  SNR = 1000
+  drift_bins = 50
+
+[pulse_spec]
+  amplitudes = [0.8, 1.0, 0.4]
+  locs = [-0.08, 0.00, 0.06]
+  fwhms = [0.04, 0.06, 0.05]
+  fj = [0.0, 0.0, 0.0]
+  modindex = [1.0, 1.0, 1.0]
