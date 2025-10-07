@@ -4,7 +4,7 @@ from scipy import stats
 from dataclasses import dataclass
 
 from .pulse_spec import PulseSpec
-from .data_structures import ArrayCollection
+from .collections import ArrayCollection
 
 @dataclass(slots=True)
 class ProfileData(ArrayCollection):
