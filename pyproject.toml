@@ -16,8 +16,8 @@ dependencies = [
 ]
 
 [project.scripts]
-jc-datagen = "jitter_correction.datagen:main"
-jc-extract-pcs = "jitter_correction.extract_pcs:main"
-jc-template-stats = "jitter_correction.template_stats:main"
-jc-pca-timing = "jitter_correction.pca_timing:main"
-jc-pca-score-timing = "jitter_correction.pca_score_timing:main"
+jc-datagen = "jitter_correction.scripts.datagen:main"
+jc-extract-pcs = "jitter_correction.scripts.extract_pcs:main"
+jc-template-stats = "jitter_correction.scripts.template_stats:main"
+jc-pca-timing = "jitter_correction.scripts.pca_timing:main"
+jc-pca-score-timing = "jitter_correction.scripts.pca_score_timing:main"
