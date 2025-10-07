@@ -89,22 +89,6 @@ def fit_sin(t, x, return_cov=False, **kwargs):
     if return_cov: params['cov'] = cov
     return params
 
-def interp_ws(signal, ts = None):
-    '''
-    Calculate the Whittaker-Shannon (sinc) interpolant of a signal.
-    Returns a function computing the interpolant at a point `t`.
-    `ts` is the array of sample points (assumed evenly-spaced).
-    If `ts` is left unspecified, `arange(len(signal))` is used.
-    '''
-    if ts is None:
-        ts = np.arange(len(signal))
-    dt = ts[1] - ts[0]
-    
-    def interpolant(t):
-        return np.sum(signal*sinc((t - ts)/dt))
-    
-    return interpolant
-
 def periodic_sinc(n, x):
     '''
     Calculate the "periodic sinc function": the Fourier transform of
