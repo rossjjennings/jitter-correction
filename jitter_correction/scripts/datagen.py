@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from ..signal import fft_roll
 from ..pulse_spec import PulseSpec
 from ..profile_data import gen_pulses, gen_profiles, gen_pseudo_profiles
-from ..correction_utils import gen_data
+from ..utils import gen_data
 
 def gen_data_from_config(config):
     """

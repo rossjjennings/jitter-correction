@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import svd
 
 from ..toas import toa_fourier
-from ..correction_utils import toa_pca
+from ..pca.gtm import toa_pca
 from ..signal import fft_roll
 
 def main():
