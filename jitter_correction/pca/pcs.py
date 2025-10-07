@@ -2,6 +2,7 @@
 Methods for working with principal components
 '''
 import numpy as np
+from numpy.typing import ArrayLike
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.linalg import svd
