@@ -3,9 +3,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.linalg import svd
 
-from .toas import toa_fourier
-from .correction_utils import toa_pca
-from .signal import fft_roll
+from ..toas import toa_fourier
+from ..correction_utils import toa_pca
+from ..signal import fft_roll
 
 def main():
     import argparse

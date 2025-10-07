@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 from scipy.linalg import svd
 from collections import namedtuple
 
-from .toas import toa_fourier
-from .signal import fft_roll
-from .extract_pcs import plot_pcs
+from ..toas import toa_fourier
+from ..signal import fft_roll
+from ..extract_pcs import plot_pcs
 
 ToaScoreResult = namedtuple('ToaResult', ['toa', 'ampl', 'scores'])
 

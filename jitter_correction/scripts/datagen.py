@@ -3,9 +3,9 @@ from numpy.random import random, randn, poisson
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from .signal import fft_roll
-from .gen_pulses import PulseSpec, gen_pulses, gen_profiles, gen_pseudo_profiles
-from .correction_utils import gen_data
+from ..signal import fft_roll
+from ..gen_pulses import PulseSpec, gen_pulses, gen_profiles, gen_pseudo_profiles
+from ..correction_utils import gen_data
 
 def gen_data_from_config(config):
     """

@@ -3,9 +3,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.linalg import svd
 
-from .toas import toa_fourier
-from .correction_utils import toa_pca, plot_pcs
-from .signal import fft_roll
+from ..toas import toa_fourier
+from ..correction_utils import toa_pca, plot_pcs
+from ..signal import fft_roll
 
 def extract_pcs(profiles, n_pcs=None, n_iter=2, initial_template=None, return_all=False, use_trend=True):
     '''
