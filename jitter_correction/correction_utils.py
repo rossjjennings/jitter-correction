@@ -9,7 +9,7 @@ from collections import namedtuple
 
 from .toas import toa_fourier
 from .signal import fft_roll
-from .gen_pulses import gen_profiles
+from .profile_data import gen_profiles
 
 def gen_data(spec, n_profiles, npprof, n_bins, SNR, drift_bins):
     '''

@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 
 from ..toas import toa_fourier
 from ..signal import fft_roll
-from ..gen_pulses import PulseSpec, gen_pulses, gen_profiles, gen_pseudo_profiles
+from ..pulse_spec import PulseSpec
+from ..profile_data import gen_pulses, gen_profiles, gen_pseudo_profiles
 
 if hasattr(np, "trapezoid"):
     # np.trapz was renamed to np.trapezoid in Numpy 2.0

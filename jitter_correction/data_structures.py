@@ -79,14 +79,6 @@ class ArrayCollection(HierarchicalCollection, metaclass=ABCMeta):
         return cls(**npz)
 
 @dataclass(slots=True)
-class ProfileData(ArrayCollection):
-    '''
-    A set of profiles and corresponding phase information.
-    '''
-    phase: ArrayLike
-    profiles: ArrayLike
-
-@dataclass(slots=True)
 class PrincipalComponentModel(ArrayCollection):
     '''
     A model derived using principal component analysis.
