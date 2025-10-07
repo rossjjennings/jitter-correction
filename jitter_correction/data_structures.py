@@ -1,0 +1,109 @@
+import numpy as np
+import h5py
+import typing
+from numpy.typing import ArrayLike
+from abc import abstractmethod, ABCMeta
+from dataclasses import dataclass
+
+class HierarchicalCollection(metaclass=ABCMeta):
+    '''
+    A mixin class that allows saving to or loading from HDF5 files.
+    Subclasses must define __slots__ which hold either np.ndarray or
+    HierarchicalCollection instances, and slot names must correspond to
+    constructor arguments.
+    '''
+    __slots__ = ()
+
+    def save_group(self, grp):
+        '''
+        Save the data from this class instance to an HDF5 group.
+        '''
+        for slot in self.__slots__:
+            item = getattr(self, slot)
+            if isinstance(item, HierarchicalCollection):
+                subgrp = grp.create_group(slot)
+                item.save_group(subgrp)
+            else:
+                # assume item is an ndarray
+                grp.create_dataset(slot, data=item)
+
+    def save_hdf5(self, filename):
+        '''
+        Save the data from this class instance to an HDF5 file.
+        '''
+        with h5py.File(filename, 'w') as f:
+            self.save_group(f)
+
+    @classmethod
+    def from_group(cls, grp):
+        '''
+        Load data from an HDF5 group and return an instance of this class.
+        '''
+        slots_dict = {}
+        type_hints = typing.get_type_hints(cls)
+        for slot in cls.__slots__:
+            if issubclass(type_hints[slot], HierarchicalCollection):
+                item = type_hints[slot].from_group(grp[slot])
+                slots_dict[slot] = item
+            elif issubclass(type_hints[slot], ArrayLike):
+                slots_dict[slot] = np.asanyarray(grp[slot])
+        return cls(**slots_dict)
+
+    @classmethod
+    def from_hdf5(cls, filename):
+        with h5py.File(filename, 'r') as f:
+            instance = cls.from_group(f)
+        return instance
+
+class ArrayCollection(HierarchicalCollection, metaclass=ABCMeta):
+    '''
+    A mixin class allowing a class whose only data attributes are numpy arrays
+    to be saved or loaded. Subclasses must define __slots__ which hold np.ndarray
+    instances, and slot names must correspond to constructor arguments.
+    '''
+    __slots__ = ()
+
+    def save_npz(self, filename):
+        '''
+        Save the data from this class instance to an npz file.
+        '''
+        slots_dict = {slot: getattr(self, slot) for slot in self.__slots__}
+        np.savez(filename, **slots_dict)
+
+    @classmethod
+    def from_npz(cls, filename):
+        '''
+        Load data from an npz file and return an instance of this class.
+        '''
+        npz = np.load(filename)
+        return cls(**npz)
+
+@dataclass(slots=True)
+class ProfileData(ArrayCollection):
+    '''
+    A set of profiles and corresponding phase information.
+    '''
+    phase: ArrayLike
+    profiles: ArrayLike
+
+@dataclass(slots=True)
+class PrincipalComponentModel(ArrayCollection):
+    '''
+    A model derived using principal component analysis.
+    Includes the template, principal components, and eigenvalues.
+    '''
+    phase: ArrayLike
+    template: ArrayLike
+    pcs: ArrayLike
+    eigvals: ArrayLike
+
+@dataclass(slots=True)
+class PrincipalComponentResults(HierarchicalCollection):
+    '''
+    Results of performing principal component analysis on a set of profiles.
+    Includes the scores (i.e., principal component values) and TOA errors (dtoas)
+    as well as the PrincipalComponentModel.
+    '''
+    model: PrincipalComponentModel
+    scores: ArrayLike
+    dtoas: ArrayLike
