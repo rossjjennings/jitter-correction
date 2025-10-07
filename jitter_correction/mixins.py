@@ -19,7 +19,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
         '''
         for slot in self.__slots__:
             item = getattr(self, slot)
-            if isinstance(item, HierarchicalCollection):
+            if isinstance(item, Hdf5Serializable):
                 subgrp = grp.create_group(slot)
                 item.save_group(subgrp)
             else:
@@ -41,7 +41,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
         slots_dict = {}
         type_hints = typing.get_type_hints(cls)
         for slot in cls.__slots__:
-            if issubclass(type_hints[slot], HierarchicalCollection):
+            if issubclass(type_hints[slot], Hdf5Serializable):
                 item = type_hints[slot].from_group(grp[slot])
                 slots_dict[slot] = item
             elif issubclass(type_hints[slot], ArrayLike):
