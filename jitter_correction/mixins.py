@@ -76,25 +76,3 @@ class NpzSerializable(Hdf5Serializable, metaclass=ABCMeta):
         '''
         npz = np.load(filename)
         return cls(**npz)
-
-@dataclass(slots=True)
-class PrincipalComponentModel(NpzSerializable):
-    '''
-    A model derived using principal component analysis.
-    Includes the template, principal components, and eigenvalues.
-    '''
-    phase: ArrayLike
-    template: ArrayLike
-    pcs: ArrayLike
-    eigvals: ArrayLike
-
-@dataclass(slots=True)
-class PrincipalComponentResults(Hdf5Serializable):
-    '''
-    Results of performing principal component analysis on a set of profiles.
-    Includes the scores (i.e., principal component values) and TOA errors (dtoas)
-    as well as the PrincipalComponentModel.
-    '''
-    model: PrincipalComponentModel
-    scores: ArrayLike
-    dtoas: ArrayLike

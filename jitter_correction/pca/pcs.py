@@ -5,9 +5,33 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.linalg import svd
+from dataclasses import dataclass
 
 from ..signal import fft_roll
 from ..toas import toa_fourier
+from ..mixins import NpzSerializable, Hdf5Serializable
+
+@dataclass(slots=True)
+class PrincipalComponentModel(NpzSerializable):
+    '''
+    A model derived using principal component analysis.
+    Includes the template, principal components, and eigenvalues.
+    '''
+    phase: ArrayLike
+    template: ArrayLike
+    pcs: ArrayLike
+    eigvals: ArrayLike
+
+@dataclass(slots=True)
+class PrincipalComponentResults(Hdf5Serializable):
+    '''
+    Results of performing principal component analysis on a set of profiles.
+    Includes the scores (i.e., principal component values) and TOA errors (dtoas)
+    as well as the PrincipalComponentModel.
+    '''
+    model: PrincipalComponentModel
+    scores: ArrayLike
+    dtoas: ArrayLike
 
 def extract_pcs(profiles, n_pcs, initial_template=None, return_all=True, use_trend=True):
     '''
