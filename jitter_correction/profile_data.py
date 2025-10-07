@@ -4,10 +4,10 @@ from scipy import stats
 from dataclasses import dataclass
 
 from .pulse_spec import PulseSpec
-from .collections import ArrayCollection
+from .mixins import NpzSerializable
 
 @dataclass(slots=True)
-class ProfileData(ArrayCollection):
+class ProfileData(NpzSerializable):
     '''
     A set of profiles and corresponding phase information.
     '''

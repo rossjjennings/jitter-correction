@@ -5,12 +5,11 @@ from numpy.typing import ArrayLike
 from abc import abstractmethod, ABCMeta
 from dataclasses import dataclass
 
-class HierarchicalCollection(metaclass=ABCMeta):
+class Hdf5Serializable(metaclass=ABCMeta):
     '''
-    A mixin class that allows saving to or loading from HDF5 files.
-    Subclasses must define __slots__ which hold either np.ndarray or
-    HierarchicalCollection instances, and slot names must correspond to
-    constructor arguments.
+    A mixin which allows class instances to be saved as HDF5 files.
+    Subclasses are expected to be dataclasses with slots, with instance
+    variables which are ArrayLike or themselves Hdf5Serializable.
     '''
     __slots__ = ()
 
@@ -55,11 +54,11 @@ class HierarchicalCollection(metaclass=ABCMeta):
             instance = cls.from_group(f)
         return instance
 
-class ArrayCollection(HierarchicalCollection, metaclass=ABCMeta):
+class NpzSerializable(Hdf5Serializable, metaclass=ABCMeta):
     '''
-    A mixin class allowing a class whose only data attributes are numpy arrays
-    to be saved or loaded. Subclasses must define __slots__ which hold np.ndarray
-    instances, and slot names must correspond to constructor arguments.
+    A mixin which allows class instances to be saved as NPZ files.
+    Subclasses are expected to be dataclasses with slots, with only
+    ArrayLike instance variables.
     '''
     __slots__ = ()
 
@@ -79,7 +78,7 @@ class ArrayCollection(HierarchicalCollection, metaclass=ABCMeta):
         return cls(**npz)
 
 @dataclass(slots=True)
-class PrincipalComponentModel(ArrayCollection):
+class PrincipalComponentModel(NpzSerializable):
     '''
     A model derived using principal component analysis.
     Includes the template, principal components, and eigenvalues.
@@ -90,7 +89,7 @@ class PrincipalComponentModel(ArrayCollection):
     eigvals: ArrayLike
 
 @dataclass(slots=True)
-class PrincipalComponentResults(HierarchicalCollection):
+class PrincipalComponentResults(Hdf5Serializable):
     '''
     Results of performing principal component analysis on a set of profiles.
     Includes the scores (i.e., principal component values) and TOA errors (dtoas)
