@@ -7,17 +7,17 @@ from collections import namedtuple
 from ..signal import fft_roll
 from ..toas import toa_fourier
 
+eps=np.finfo(np.float64).eps
 ToaScoreResult = namedtuple('ToaResult', ['toa', 'ampl', 'scores'])
 
-def toa_score(template, pcs, coeffs, profile, ts = None, tol = np.sqrt(np.finfo(np.float64).eps)):
+def toa_score(template, pcs, coeffs, profile, dt=1, tol=np.sqrt(eps)):
     '''
     Calculate a maximum-likelihood TOA given a template and a PCA model of pulse shape variations.
     Uses the dot-product based method of Osłowski (2011).
 
     `pcs`:    The principal components (unit vectors), as rows of an array.
     `coeffs`: Coefficients of principal component dot products to use in correcter.
-    `ts`:     Evenly-spaced array of phase values corresponding to the profile.
-              Sets the units of the TOA. If this is `None`, the TOA is reported in bins.
+    `dt`:  The width of each phase bin in the profile. Sets the units of the TOA.
     `tol`:    Relative tolerance for optimization (in bins).
     '''
     n = len(profile)

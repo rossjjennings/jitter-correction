@@ -9,21 +9,18 @@ from collections import namedtuple
 from ..signal import fft_roll
 from ..toas import toa_fourier
 
-ToaPcaResult = namedtuple('ToaResult', ['toa', 'ampl', 'scores'])
+eps=np.finfo(np.float64).eps
+ToaGtmResult = namedtuple('ToaResult', ['toa', 'ampl', 'scores'])
 
-def toa_pca(template, pcs, profile, ts = None, tol = np.sqrt(np.finfo(np.float64).eps), plot=False):
+def toa_gtm(template, pcs, profile, dt=1, tol=np.sqrt(eps)):
     '''
     Calculate a maximum-likelihood TOA given a template and a PCA model of pulse shape variations.
 
     `pcs`: The principal components (unit vectors), as rows of an array.
-    `ts`:  Evenly-spaced array of phase values corresponding to the profile.
-           Sets the units of the TOA. If this is `None`, the TOA is reported in bins.
+    `dt`:  The width of each phase bin in the profile. Sets the units of the TOA.
     `tol`: Relative tolerance for optimization (in bins).
     '''
     n = len(profile)
-    if ts is None:
-        ts = np.arange(n)
-    dt = float(ts[1] - ts[0])
     k = len(pcs)
 
     template_fft = fft(template)
@@ -70,19 +67,15 @@ def toa_pca(template, pcs, profile, ts = None, tol = np.sqrt(np.finfo(np.float64
 
     return ToaPcaResult(toa=toa, ampl=ampl, scores=scores)
 
-def toa_pca_prior(template, pcs, weights, profile, ts = None, tol = np.sqrt(np.finfo(np.float64).eps), plot=False):
+def toa_gtm_prior(template, pcs, weights, profile, dt=1, tol=np.sqrt(eps)):
     '''
     Calculate a maximum-likelihood TOA given a template and a PCA model of pulse shape variations.
 
     `pcs`: The principal components (unit vectors), as rows of an array.
-    `ts`:  Evenly-spaced array of phase values corresponding to the profile.
-           Sets the units of the TOA. If this is `None`, the TOA is reported in bins.
+    `dt`:  The width of each phase bin in the profile. Sets the units of the TOA.
     `tol`: Relative tolerance for optimization (in bins).
     '''
     n = len(profile)
-    if ts is None:
-        ts = np.arange(n)
-    dt = float(ts[1] - ts[0])
     k = len(pcs)
 
     template_fft = fft(template)
