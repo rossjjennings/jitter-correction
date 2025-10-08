@@ -1,14 +1,20 @@
 import numpy as np
 from numpy import pi, sin, cos, exp, log, sqrt
 from numpy.random import random, randn
+from numpy.typing import ArrayLike
 from scipy import stats
+from dataclasses import dataclass
+from numbers import Integral, Real
 
+from .mixins import NpzSerializable
+
+@dataclass(slots=True)
 class Subpulse:
     '''
     One component of a pulse.
     
-    Constructor parameters
-    ----------------------
+    Data attributes
+    ---------------
     amplitude : Amplitude of the component.
     loc       : Location of the component center, in phase units.
     width     : Width of the component, in phase units.
@@ -16,19 +22,19 @@ class Subpulse:
     fj        : Jitter parameter (std. dev. of location over `width`).
     modindex  : Modulation index (std. dev. of amplitude over `amplitude`).
     '''
-    def __init__(self, amplitude=1., loc=0., width=0.1, fj=0.1, modindex=1.):
-        self.amplitude = amplitude
-        self.loc = loc
-        self.width = width
-        self.fj = fj
-        self.modindex = modindex
+    amplitude: Real
+    loc: Real
+    width: Real
+    fj: Real
+    modindex: Real
 
-class PulseSpec:
+@dataclass(slots=True)
+class PulseSpec(NpzSerializable):
     '''
     Specification of a multi-component Gaussian model for generating pulses.
     
-    Constructor parameters
-    ----------------------
+    Data attributes
+    ---------------
     amplitudes : Amplitudes of the components.
     locs       : Locations of the component centers, in phase units.
     widths     : Widths of the components, in phase units.
@@ -50,6 +56,12 @@ class PulseSpec:
     from_template_widths(): Create a `PulseSpec` object using template
                             widths rather than single-pulse widths.
     '''
+    amplitudes: ArrayLike
+    locs: ArrayLike
+    widths: ArrayLike
+    fj: ArrayLike
+    modindex: ArrayLike
+
     def __init__(self, amplitudes=[1., 0.4], locs=[-0.06, 0.06],
                  widths=[0.05, 0.05], fj=[0.1, 0.1], modindex=[1., 1.]):
         
