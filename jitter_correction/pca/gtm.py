@@ -65,7 +65,7 @@ def toa_gtm(template, pcs, profile, dt=1, tol=np.sqrt(eps)):
     pcs_shifted = fft_roll(pcs, toa/dt)
     scores = np.dot(pcs_shifted, profile)
 
-    return ToaPcaResult(toa=toa, ampl=ampl, scores=scores)
+    return ToaGtmResult(toa=toa, ampl=ampl, scores=scores)
 
 def toa_gtm_prior(template, pcs, weights, profile, dt=1, tol=np.sqrt(eps)):
     '''
