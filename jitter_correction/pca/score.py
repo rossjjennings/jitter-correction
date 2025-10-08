@@ -21,12 +21,9 @@ def toa_score(template, pcs, coeffs, profile, dt=1, tol=np.sqrt(eps)):
     `tol`:    Relative tolerance for optimization (in bins).
     '''
     n = len(profile)
-    if ts is None:
-        ts = np.arange(n)
-    dt = float(ts[1] - ts[0])
     k = len(pcs)
 
-    result = toa_fourier(template, profile, ts = ts, tol = tol)
+    result = toa_fourier(template, profile, dt=dt, tol=tol)
     initial_toa = result.toa
     ampl = result.ampl
 

@@ -50,7 +50,7 @@ def toa_ws(template, profile, dt=1, noise_level=None, tol=sqrt(eps)):
     `tol`: Relative tolerance for optimization.
     '''
     n = len(profile)
-    lags = np.arange(-len(ts) + 1, len(ts))*dt
+    lags = np.arange(-len(profile) + 1, len(profile))*dt
 
     ccf = np.correlate(profile, template, mode = 'full')
     ccf_max = lags[np.argmax(ccf)]
@@ -70,7 +70,7 @@ def toa_ws(template, profile, dt=1, noise_level=None, tol=sqrt(eps)):
         noise_level = offpulse_rms(profile, profile.size//4)
     snr = ampl/noise_level
 
-    w_eff = np.sqrt(n*dt/trapz(np.gradient(template, ts)**2, ts))
+    w_eff = np.sqrt(n*dt/trapz(np.gradient(template, dt)**2, dx=dt))
     error = w_eff/(snr*sqrt(n))
 
     return ToaResult(toa=toa, error=error, ampl=ampl)
@@ -118,13 +118,12 @@ def toa_fourier(template, profile, dt=1, noise_level=None, tol=sqrt(eps)):
         noise_level = offpulse_rms(profile, profile.size//4)
     snr = ampl/noise_level
 
-    w_eff = np.sqrt(n*dt/trapz(np.gradient(template, ts)**2, ts))
+    w_eff = np.sqrt(n*dt/trapz(np.gradient(template, dt)**2, dx=dt))
     error = w_eff/(snr*sqrt(n))
 
     return ToaResult(toa=toa, error=error, ampl=ampl)
 
-def test_toa_recovery(func, template, n, rms_toa, SNR=np.inf, ts=None,
-                      tol=sqrt(eps)):
+def test_toa_recovery(func, template, n, rms_toa, snr=np.inf, dt=1, tol=sqrt(eps)):
     '''
     Test function for `toa_ws()` and `toa_fourier()`.
     Attempts to recover `n` TOAs at a given SNR and returns the RMS error.
@@ -134,19 +133,18 @@ def test_toa_recovery(func, template, n, rms_toa, SNR=np.inf, ts=None,
                 shifting it.
     `n`:        Number of test profiles to generate.
     `rms_toa`:  RMS TOA for test profiles.
+    `snr`:      Signal-to-noise ratio of the test profiles
+    `dt`:  The width of each phase bin in the profile. Sets the units of the TOA.
     `tol`:      Relative tolerance for optimization.
     '''
-    if ts is None:
-        ts = np.arange(len(template))
-    dt = ts[1] - ts[0]
     dtoas = []
     toa_errs = []
     for i in range(n):
         true_toa = rms_toa*randn()
         profile = fft_roll(template, true_toa/dt)
-        if np.isfinite(SNR):
-            profile += randn(len(profile))/SNR
-        result = func(template, profile, ts=ts, tol=tol)
+        if np.isfinite(snr):
+            profile += randn(len(profile))/snr
+        result = func(template, profile, dt=dt, tol=tol)
         toa_estimate = result.toa
         dtoas.append(toa_estimate-true_toa)
         toa_errs.append(result.error)
