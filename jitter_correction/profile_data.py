@@ -1,10 +1,12 @@
 import numpy as np
-from numpy.random import randn
+from numpy.random import random, randn, poisson
+import matplotlib.pyplot as plt
 from scipy import stats
 from dataclasses import dataclass
 
 from .pulse_spec import PulseSpec
 from .mixins import NpzSerializable
+from .signal import fft_roll
 
 @dataclass(slots=True)
 class ProfileData(NpzSerializable):
@@ -13,6 +15,25 @@ class ProfileData(NpzSerializable):
     '''
     phase: np.typing.ArrayLike
     profiles: np.typing.ArrayLike
+
+    @property
+    def profile_num(self):
+        '''
+        Array enumerating profiles. Useful for plotting purposes.
+        '''
+        return np.arange(self.profiles.shape[0])
+
+    def plot(self, ax: plt.Axes | None = None):
+        '''
+        Create a pcolor-style plot of the data, with axis labels.
+        `ax` is a pyplot.Axes object on which to plot.
+        '''
+        if ax is None:
+            ax = plt.gca()
+        pc = plt.pcolormesh(self.phase, self.profile_num, self.profiles)
+        ax.set_xlabel("Phase (cycles)")
+        ax.set_ylabel("Profile number")
+        return pc
 
 def gen_pulses(phase, n_pulses = 5000, SNR = np.inf, ampl_dist = 'gamma', spec = PulseSpec()):
     '''
@@ -180,3 +201,81 @@ def shift_template(phase, shifts, SNR = np.inf, spec = PulseSpec()):
         profiles += randn(*profiles_shape)/SNR
 
     return profiles
+
+def gen_data(spec, n_profiles, npprof, n_bins, SNR, drift_bins):
+    '''
+    Generated simulated data based on a pulse specification.
+    '''
+    phase = np.linspace(-1/2, 1/2, n_bins, endpoint=False)
+    profiles = gen_profiles(phase, spec=spec, n_profiles=n_profiles, npprof=npprof, SNR=SNR)
+
+    shifts = drift_bins/n_profiles*np.arange(n_profiles)
+    shifts -= np.mean(shifts)
+    for i, profile in enumerate(profiles):
+        profiles[i] = fft_roll(profile, shifts[i])
+
+    return phase, profiles
+
+def gen_data_from_config(config):
+    """
+    Generate profiles based on configuration data, which may be loaded from a
+    TOML configuration file or passed in directly as a dictionary.
+    """
+    spec = PulseSpec.from_fwhms(**config['pulse_spec'])
+    phase, profiles = gen_data(spec, **config['data'])
+    if 'ripple' in config:
+        ripple_freq = config['ripple']['freq']
+        ripple_ampl = config['ripple']['amplitude']
+
+        for i, profile in enumerate(profiles):
+            ripple_phase = 2*np.pi*random()
+            profiles[i] += ripple_ampl*np.cos(2*np.pi*ripple_freq*phase - ripple_phase)
+
+    if 'rfi' in config:
+        period = config['obs']['period']
+        dm = config['obs']['dm']
+        rfi_ampl = config['rfi']['amplitude']
+        rfi_dur = config['rfi']['duration']*period
+        rfi_freq = config['rfi']['center_freq']
+        rfi_bw = config['rfi']['bandwidth']
+        rfi_rate = config['rfi']['rate']
+        dm_constant = 1/2.41e-4 # MHz**2 s cm**3 pc**-1
+
+        min_lag = dm_constant*dm/(rfi_freq + rfi_bw/2)**2
+        max_lag = dm_constant*dm/(rfi_freq - rfi_bw/2)**2
+        dt = (phase[-1] - phase[-2])*period
+        length = period + max_lag - min_lag + rfi_dur - dt
+        #print(f'Length is {length}')
+        #print(f'Max lag is {max_lag}')
+        #print(f'Min lag is {min_lag}')
+        #print(f'RFI duration is {rfi_dur}')
+        for i, profile in enumerate(profiles):
+            n_rfi = poisson(rfi_rate*length/period)
+            #print(f'Profile {i} has {n_rfi} RFI instances')
+            for j in range(n_rfi):
+                t1 = random()*length + min_lag
+                t0 = t1 - rfi_dur
+                #print(f'  RFI {j} has t0={t0}, t1={t1}')
+                time = (phase + 0.5)*period
+                first_bin = np.min(np.where(time > t0 - max_lag))
+                last_bin = np.max(np.where(time <= t1 - min_lag))
+                time_slice = time[first_bin:last_bin+1]
+                #print(f'  Freq: {rfi_freq} MHz')
+                if dm == 0:
+                    top = rfi_freq + rfi_bw/2
+                else:
+                    denom = ((t0 - time_slice < 0)*(dm_constant*dm)
+                                /(rfi_freq + rfi_bw/2)**2
+                            + (t0 - time_slice > 0)*(t0 - time_slice))
+                    top = np.minimum(
+                        np.sqrt(dm_constant*dm/denom),
+                        rfi_freq + rfi_bw/2,
+                    )
+                bottom = np.maximum(
+                    np.sqrt(dm_constant*dm/(t1 - time_slice)),
+                    rfi_freq - rfi_bw/2,
+                )
+                #print(f'  Top: {top} MHz')
+                #print(f'  Bottom: {bottom} MHz')
+                profiles[i,first_bin:last_bin+1] += rfi_ampl*(top - bottom)/rfi_bw
+    return ProfileData(phase, profiles)

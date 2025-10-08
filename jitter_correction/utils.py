@@ -3,21 +3,6 @@ from collections import namedtuple
 
 from .toas import toa_fourier
 from .signal import fft_roll
-from .profile_data import gen_profiles
-
-def gen_data(spec, n_profiles, npprof, n_bins, SNR, drift_bins):
-    '''
-    Generated simulated data based on a pulse specification.
-    '''
-    phase = np.linspace(-1/2, 1/2, n_bins, endpoint=False)
-    profiles = gen_profiles(phase, spec=spec, n_profiles=n_profiles, npprof=npprof, SNR=SNR)
-    
-    shifts = drift_bins/n_profiles*np.arange(n_profiles)
-    shifts -= np.mean(shifts)
-    for i, profile in enumerate(profiles):
-        profiles[i] = fft_roll(profile, shifts[i])
-    
-    return phase, profiles
 
 def get_template(profiles, n_iter=1):
     '''
