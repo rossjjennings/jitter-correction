@@ -7,6 +7,7 @@ from ..toas import toa_fourier
 from ..pca.pcs import plot_pcs
 from ..pca.gtm import toa_pca
 from ..signal import fft_roll
+from ..utils import get_template
 
 def extract_pcs(profiles, n_pcs=None, n_iter=2, initial_template=None, return_all=False, use_trend=True):
     '''

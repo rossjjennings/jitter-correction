@@ -6,6 +6,7 @@ from numpy.fft import fft, rfft, irfft, fftfreq
 from scipy.optimize import minimize_scalar
 from collections import namedtuple
 
+from ..signal import fft_roll
 from ..toas import toa_fourier
 
 ToaPcaResult = namedtuple('ToaResult', ['toa', 'ampl', 'scores'])

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from ..signal import fft_roll
 from ..toas import toa_fourier
 from ..mixins import NpzSerializable, Hdf5Serializable
+from ..utils import get_template
 
 @dataclass(slots=True)
 class PrincipalComponentModel(NpzSerializable):
