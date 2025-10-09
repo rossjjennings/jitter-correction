@@ -35,7 +35,14 @@ class ProfileData(NpzSerializable):
         ax.set_ylabel("Profile number")
         return pc
 
-def gen_pulses(phase, n_pulses = 5000, SNR = np.inf, ampl_dist = 'gamma', spec = PulseSpec()):
+    def __iter__(self):
+        '''
+        Allow unpacking like a tuple
+        '''
+        yield phase
+        yield profiles
+
+def gen_pulses(phase, n_pulses=5000, SNR=np.inf, ampl_dist='gamma', spec=PulseSpec()):
     '''
     Generate synthetic pulses from a model with several Gaussian components.
 
@@ -79,10 +86,10 @@ def gen_pulses(phase, n_pulses = 5000, SNR = np.inf, ampl_dist = 'gamma', spec =
         if np.ndim(SNR) != 0:
             SNR = SNR[..., np.newaxis]
         profiles += randn(n_pulses, n_phase)/SNR
-    return profiles
+    return ProfileData(phase, profiles)
 
-def gen_profiles(phase, n_profiles = 10, npprof = 1000, SNR = np.inf,
-                 ampl_dist = 'gamma', spec = PulseSpec()):
+def gen_profiles(phase, n_profiles=10, npprof=1000, SNR=np.inf,
+                 ampl_dist='gamma', spec=PulseSpec()):
     '''
     Generate average profiles from a model with several Gaussian components.
     Averages pulses in the time domain, generating the Gaussian shape for each.
@@ -133,7 +140,7 @@ def gen_profiles(phase, n_profiles = 10, npprof = 1000, SNR = np.inf,
             SNR = SNR[..., np.newaxis]
         profiles += randn(n_profiles, n_phase)/SNR
 
-    return profiles
+    return ProfileData(phase, profiles)
 
 def gen_pseudo_profiles(phase, n_profiles = 100, npprof = 10000,
                         SNR = np.inf, spec = PulseSpec()):
@@ -167,8 +174,8 @@ def gen_pseudo_profiles(phase, n_profiles = 100, npprof = 10000,
 
     profile_spec = PulseSpec(spec.amplitudes, spec.locs,
                              widths_profile, fj_profile, modindex_profile)
-    profiles = gen_pulses(phase, n_profiles, SNR, profile_spec)
-    return profiles
+    data = gen_pulses(phase, n_profiles, SNR, profile_spec)
+    return data
 
 def shift_template(phase, shifts, SNR = np.inf, spec = PulseSpec()):
     '''
@@ -200,21 +207,22 @@ def shift_template(phase, shifts, SNR = np.inf, spec = PulseSpec()):
             SNR = SNR[..., np.newaxis]
         profiles += randn(*profiles_shape)/SNR
 
-    return profiles
+    return ProfileData(phase, profiles)
 
 def gen_data(spec, n_profiles, npprof, n_bins, SNR, drift_bins):
     '''
     Generated simulated data based on a pulse specification.
     '''
     phase = np.linspace(-1/2, 1/2, n_bins, endpoint=False)
-    profiles = gen_profiles(phase, spec=spec, n_profiles=n_profiles, npprof=npprof, SNR=SNR)
+    data = gen_profiles(phase, spec=spec, n_profiles=n_profiles, npprof=npprof, SNR=SNR)
+    profiles = data.profiles
 
     shifts = drift_bins/n_profiles*np.arange(n_profiles)
     shifts -= np.mean(shifts)
     for i, profile in enumerate(profiles):
         profiles[i] = fft_roll(profile, shifts[i])
 
-    return phase, profiles
+    return ProfileData(phase, profiles)
 
 def gen_data_from_config(config):
     """
@@ -222,14 +230,15 @@ def gen_data_from_config(config):
     TOML configuration file or passed in directly as a dictionary.
     """
     spec = PulseSpec.from_fwhms(**config['pulse_spec'])
-    phase, profiles = gen_data(spec, **config['data'])
+    data = gen_data(spec, **config['data'])
+    profiles = data.profiles
     if 'ripple' in config:
         ripple_freq = config['ripple']['freq']
         ripple_ampl = config['ripple']['amplitude']
 
         for i, profile in enumerate(profiles):
-            ripple_phase = 2*np.pi*random()
-            profiles[i] += ripple_ampl*np.cos(2*np.pi*ripple_freq*phase - ripple_phase)
+            ripple_phase = ripple_freq*data.phase - random()
+            profiles[i] += ripple_ampl*np.cos(2*np.pi*ripple_phase)
 
     if 'rfi' in config:
         period = config['obs']['period']
@@ -243,7 +252,7 @@ def gen_data_from_config(config):
 
         min_lag = dm_constant*dm/(rfi_freq + rfi_bw/2)**2
         max_lag = dm_constant*dm/(rfi_freq - rfi_bw/2)**2
-        dt = (phase[-1] - phase[-2])*period
+        dt = (data.phase[-1] - data.phase[-2])*period
         length = period + max_lag - min_lag + rfi_dur - dt
         #print(f'Length is {length}')
         #print(f'Max lag is {max_lag}')
@@ -256,7 +265,7 @@ def gen_data_from_config(config):
                 t1 = random()*length + min_lag
                 t0 = t1 - rfi_dur
                 #print(f'  RFI {j} has t0={t0}, t1={t1}')
-                time = (phase + 0.5)*period
+                time = (data.phase + 0.5)*period
                 first_bin = np.min(np.where(time > t0 - max_lag))
                 last_bin = np.max(np.where(time <= t1 - min_lag))
                 time_slice = time[first_bin:last_bin+1]
@@ -278,4 +287,4 @@ def gen_data_from_config(config):
                 #print(f'  Top: {top} MHz')
                 #print(f'  Bottom: {bottom} MHz')
                 profiles[i,first_bin:last_bin+1] += rfi_ampl*(top - bottom)/rfi_bw
-    return ProfileData(phase, profiles)
+    return ProfileData(data.phase, profiles)
