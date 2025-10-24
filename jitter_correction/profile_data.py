@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.typing import ArrayLike
 from numpy.random import random, randn, poisson
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -8,16 +7,16 @@ from abc import ABCMeta, abstractmethod
 from typing import Any
 
 from .pulse_spec import PulseSpec
-from .mixins import NpzSerializable
+from .mixins import NpzSerializable, Hdf5Serializable
 from .signal import fft_roll
 
 @dataclass(slots=True)
-class ProfileData(NpzSerializable):
+class ProfileData(NpzSerializable, Hdf5Serializable):
     '''
     A set of profiles and corresponding phase information.
     '''
-    phase: ArrayLike
-    profiles: ArrayLike
+    phase: np.ndarray
+    profiles: np.ndarray
 
     @property
     def profile_number(self):
@@ -76,8 +75,6 @@ def gen_pulses(
     '''
     n_phase = len(phase)
     profiles = np.zeros((n_pulses, n_phase))
-    if rng is None:
-        rng = np.random.default_rng()
 
     for c in spec.components():
         try:
@@ -248,7 +245,7 @@ class RFI(metaclass=ABCMeta):
     Abstract base class for all RFI sources
     '''
     @abstractmethod
-    def generate(rng: np.random.Generator) -> ArrayLike:
+    def generate(rng: np.random.Generator) -> np.ndarray:
         pass
 
 @dataclass(slots=True)
@@ -256,7 +253,7 @@ class RippleRFI:
     freq: float | np.floating # ripple cycles / pulse period
     amplitude: float | np.floating # rel. pulse peak
 
-    def generate(rng: np.random.Generator) -> ArrayLike:
+    def generate(rng: np.random.Generator) -> np.ndarray:
         ripple_phase = self.freq
 
 @dataclass(slots=True)

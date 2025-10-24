@@ -15,7 +15,7 @@ from ..utils import get_template
 from ..profile_data import ProfileData
 
 @dataclass(slots=True)
-class PrincipalComponentModel(NpzSerializable):
+class PrincipalComponentModel(NpzSerializable, Hdf5Serializable):
     '''
     A model derived using principal component analysis.
     Includes the template, principal components, and eigenvalues.
