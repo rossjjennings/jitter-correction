@@ -1,8 +1,11 @@
 import numpy as np
+from numpy.typing import ArrayLike
 from numpy.random import random, randn, poisson
 import matplotlib.pyplot as plt
 from scipy import stats
 from dataclasses import dataclass
+from abc import ABCMeta, abstractmethod
+from typing import Any
 
 from .pulse_spec import PulseSpec
 from .mixins import NpzSerializable
@@ -13,15 +16,22 @@ class ProfileData(NpzSerializable):
     '''
     A set of profiles and corresponding phase information.
     '''
-    phase: np.typing.ArrayLike
-    profiles: np.typing.ArrayLike
+    phase: ArrayLike
+    profiles: ArrayLike
 
     @property
-    def profile_num(self):
+    def profile_number(self):
         '''
         Array enumerating profiles. Useful for plotting purposes.
         '''
-        return np.arange(self.profiles.shape[0])
+        return np.arange(self.n_profiles)
+
+    @property
+    def n_profiles(self):
+        '''
+        The number of profiles.
+        '''
+        return self.profiles.shape[0]
 
     def plot(self, ax: plt.Axes | None = None):
         '''
@@ -39,10 +49,16 @@ class ProfileData(NpzSerializable):
         '''
         Allow unpacking like a tuple
         '''
-        yield phase
-        yield profiles
+        yield self.phase
+        yield self.profiles
 
-def gen_pulses(phase, n_pulses=5000, SNR=np.inf, ampl_dist='gamma', spec=PulseSpec()):
+def gen_pulses(
+        phase: np.ndarray,
+        n_pulses: int | np.integer = 5000,
+        snr: float | np.floating = np.inf,
+        ampl_dist: str = 'gamma',
+        spec: PulseSpec = PulseSpec(),
+    ) -> ProfileData:
     '''
     Generate synthetic pulses from a model with several Gaussian components.
 
@@ -50,7 +66,7 @@ def gen_pulses(phase, n_pulses=5000, SNR=np.inf, ampl_dist='gamma', spec=PulseSp
     ------
     phase    : Phase values (between -0.5 and 0.5)
     n_pulses : Number of pulses to generate.
-    SNR      : Signal-to-noise ratio. If this is `np.inf`, no noise is added.
+    snr      : Signal-to-noise ratio. If this is `np.inf`, no noise is added.
     ampl_dist  : Distribution of amplitudes to use. Can be 'gamma' or 'lognorm'.
     spec     : Pulse specification (see `PulseSpec` class)
 
@@ -60,6 +76,8 @@ def gen_pulses(phase, n_pulses=5000, SNR=np.inf, ampl_dist='gamma', spec=PulseSp
     '''
     n_phase = len(phase)
     profiles = np.zeros((n_pulses, n_phase))
+    if rng is None:
+        rng = np.random.default_rng()
 
     for c in spec.components():
         try:
@@ -82,14 +100,20 @@ def gen_pulses(phase, n_pulses=5000, SNR=np.inf, ampl_dist='gamma', spec=PulseSp
         args = (phase - locs[:,np.newaxis])**2/(2*c.width**2)
         profiles += amplitudes[:,np.newaxis] * np.exp(-args)
 
-    if np.any(SNR != np.inf):
-        if np.ndim(SNR) != 0:
-            SNR = SNR[..., np.newaxis]
-        profiles += randn(n_pulses, n_phase)/SNR
+    if np.any(snr != np.inf):
+        if np.ndim(snr) != 0:
+            snr = snr[..., np.newaxis]
+        profiles += randn(n_pulses, n_phase)/snr
     return ProfileData(phase, profiles)
 
-def gen_profiles(phase, n_profiles=10, npprof=1000, SNR=np.inf,
-                 ampl_dist='gamma', spec=PulseSpec()):
+def gen_profiles(
+        phase: np.ndarray,
+        n_profiles: int | np.integer = 10,
+        npprof: int | np.integer = 1000,
+        snr: float | np.floating = np.inf,
+        ampl_dist: str = 'gamma',
+        spec: PulseSpec = PulseSpec(),
+    ) -> ProfileData:
     '''
     Generate average profiles from a model with several Gaussian components.
     Averages pulses in the time domain, generating the Gaussian shape for each.
@@ -99,7 +123,7 @@ def gen_profiles(phase, n_profiles=10, npprof=1000, SNR=np.inf,
     phase      : Phase values (between -0.5 and 0.5)
     n_profiles : Number of profiles to generate.
     npprof     : Number of pulses to average for each profile.
-    SNR        : Signal-to-noise ratio. If this is `np.inf`, no noise is added.
+    snr        : Signal-to-noise ratio. If this is `np.inf`, no noise is added.
     ampl_dist  : Distribution of amplitudes to use. Can be 'gamma' or 'lognorm'.
     spec       : Pulse specification (see `PulseSpec` class).
 
@@ -135,15 +159,20 @@ def gen_profiles(phase, n_profiles=10, npprof=1000, SNR=np.inf,
             pulses += amplitudes[:,np.newaxis] * np.exp(-args)
         profiles[i,:] = np.mean(pulses, axis=0)
 
-    if np.any(SNR != np.inf):
-        if np.ndim(SNR) != 0:
-            SNR = SNR[..., np.newaxis]
-        profiles += randn(n_profiles, n_phase)/SNR
+    if np.any(snr != np.inf):
+        if np.ndim(snr) != 0:
+            snr = snr[..., np.newaxis]
+        profiles += randn(n_profiles, n_phase)/snr
 
     return ProfileData(phase, profiles)
 
-def gen_pseudo_profiles(phase, n_profiles = 100, npprof = 10000,
-                        SNR = np.inf, spec = PulseSpec()):
+def gen_pseudo_profiles(
+        phase: np.ndarray,
+        n_profiles: int | np.integer = 100,
+        npprof: int | np.integer = 10000,
+        snr: float | np.floating = np.inf,
+        spec: PulseSpec = PulseSpec(),
+    ) -> ProfileData:
     '''
     Generate synthetic "average profiles" from a model with several Gaussian
     components. Does not actually average generated pulses, but instead
@@ -155,7 +184,7 @@ def gen_pseudo_profiles(phase, n_profiles = 100, npprof = 10000,
     phase      : Phase values (between -0.5 and 0.5)
     n_profiles : Number of profiles to generate.
     npprof     : Number of pulses to emulate averaging for each profile.
-    SNR        : Signal-to-noise ratio. If this is `np.inf`, no noise is added.
+    snr        : Signal-to-noise ratio. If this is `np.inf`, no noise is added.
     spec       : Pulse specification (see `PulseSpec` class).
 
     Output
@@ -174,10 +203,15 @@ def gen_pseudo_profiles(phase, n_profiles = 100, npprof = 10000,
 
     profile_spec = PulseSpec(spec.amplitudes, spec.locs,
                              widths_profile, fj_profile, modindex_profile)
-    data = gen_pulses(phase, n_profiles, SNR, profile_spec)
+    data = gen_pulses(phase, n_profiles, snr, profile_spec)
     return data
 
-def shift_template(phase, shifts, SNR = np.inf, spec = PulseSpec()):
+def shift_template(
+        phase: np.ndarray,
+        shifts: int | np.integer,
+        snr: float | np.floating = np.inf,
+        spec: PulseSpec = PulseSpec(),
+    ) -> ProfileData:
     '''
     Generate synthetic profiles by shifting a template.
 
@@ -186,7 +220,7 @@ def shift_template(phase, shifts, SNR = np.inf, spec = PulseSpec()):
     phase  : Phase values (between -0.5 and 0.5)
     shifts : Number of profiles to generate.
     npprof : Number of pulses to emulate averaging for each profile.
-    SNR    : Signal-to-noise ratio. If this is `np.inf`, no noise is added.
+    snr    : Signal-to-noise ratio. If this is `np.inf`, no noise is added.
     spec   : Pulse specification (see `PulseSpec` class).
 
     Output
@@ -202,19 +236,88 @@ def shift_template(phase, shifts, SNR = np.inf, spec = PulseSpec()):
         loc = c.loc + shifts[..., np.newaxis]
         profiles += c.amplitude*np.exp(-(phase-loc)**2/(2*c.width**2))
 
-    if np.any(SNR != np.inf):
-        if np.ndim(SNR) != 0:
-            SNR = SNR[..., np.newaxis]
-        profiles += randn(*profiles_shape)/SNR
+    if np.any(snr != np.inf):
+        if np.ndim(snr) != 0:
+            snr = snr[..., np.newaxis]
+        profiles += randn(*profiles_shape)/snr
 
     return ProfileData(phase, profiles)
 
-def gen_data(spec, n_profiles, npprof, n_bins, SNR, drift_bins):
+class RFI(metaclass=ABCMeta):
+    '''
+    Abstract base class for all RFI sources
+    '''
+    @abstractmethod
+    def generate(rng: np.random.Generator) -> ArrayLike:
+        pass
+
+@dataclass(slots=True)
+class RippleRFI:
+    freq: float | np.floating # ripple cycles / pulse period
+    amplitude: float | np.floating # rel. pulse peak
+
+    def generate(rng: np.random.Generator) -> ArrayLike:
+        ripple_phase = self.freq
+
+@dataclass(slots=True)
+class ImpulsiveRFI(RFI):
+    amplitude: float | np.floating # rel. pulse peak
+    duration: float | np.floating # in units of pulse period
+    center_freq: float | np.floating # in MHz
+    bandwidth: float | np.floating # in MHz
+    rate: float | np.floating # in MHz
+
+@dataclass(slots=True)
+class ProfileModel:
+    '''
+    Encodes configuration needed to generate pulse profiles.
+    '''
+    spec: PulseSpec
+    n_profiles: int | np.integer # number of profiles to generate
+    npprof: int | np.integer # number of pulses per profile
+    n_bins: int | np.integer # number of phase bins
+    snr: float | np.floating # signal-to-noise ratio (determines noise level)
+    drift_bins: float | np.floating # phase drift from beginning to end, in bins
+    rfi: list[RFI] # RFI to add
+
+    def generate_data(self, rng: np.random.Generator) -> ProfileData:
+        '''
+        Generate profile data based on this model.
+        '''
+        phase = np.linspace(-1/2, 1/2, self.n_bins, endpoint=False)
+        data = gen_profiles(
+            phase,
+            spec=spec,
+            n_profiles=self.n_profiles,
+            npprof=self.npprof,
+            snr=self.snr,
+        )
+        shifts = np.linspace(
+            -self.drift_bins/2,
+            self.drift_bins/2,
+            self.n_profiles,
+            endpoint=False,
+        )
+
+        profiles = np.empty_like(data.profiles)
+        for i, profile in enumerate(data.profiles):
+            profiles[i] = fft_roll(profile, shifts[i])
+
+        return ProfileData(phase, profiles)
+
+def gen_data(
+        spec: PulseSpec,
+        n_profiles: int | np.integer,
+        npprof: int | np.integer,
+        n_bins: int | np.integer,
+        snr: float | np.floating,
+        drift_bins: float | np.floating,
+    ) -> ProfileData:
     '''
     Generated simulated data based on a pulse specification.
     '''
     phase = np.linspace(-1/2, 1/2, n_bins, endpoint=False)
-    data = gen_profiles(phase, spec=spec, n_profiles=n_profiles, npprof=npprof, SNR=SNR)
+    data = gen_profiles(phase, spec=spec, n_profiles=n_profiles, npprof=npprof, snr=snr)
     profiles = data.profiles
 
     shifts = drift_bins/n_profiles*np.arange(n_profiles)
@@ -224,7 +327,7 @@ def gen_data(spec, n_profiles, npprof, n_bins, SNR, drift_bins):
 
     return ProfileData(phase, profiles)
 
-def gen_data_from_config(config):
+def gen_data_from_config(config: dict[str, Any]) -> ProfileData:
     """
     Generate profiles based on configuration data, which may be loaded from a
     TOML configuration file or passed in directly as a dictionary.

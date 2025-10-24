@@ -4,7 +4,6 @@ from numpy.random import random, randn
 from numpy.typing import ArrayLike
 from scipy import stats
 from dataclasses import dataclass
-from numbers import Integral, Real
 
 from .mixins import NpzSerializable
 
@@ -22,11 +21,11 @@ class Subpulse:
     fj        : Jitter parameter (std. dev. of location over `width`).
     modindex  : Modulation index (std. dev. of amplitude over `amplitude`).
     '''
-    amplitude: Real
-    loc: Real
-    width: Real
-    fj: Real
-    modindex: Real
+    amplitude: float | np.floating
+    loc: float | np.floating
+    width: float | np.floating
+    fj: float | np.floating
+    modindex: float | np.floating
 
 @dataclass(slots=True)
 class PulseSpec(NpzSerializable):
