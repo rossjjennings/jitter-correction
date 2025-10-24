@@ -13,7 +13,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
     '''
     __slots__ = ()
 
-    def save_group(self, grp):
+    def save_group(self, grp: h5py.Group):
         '''
         Save the data from this class instance to an HDF5 group.
         '''
@@ -26,7 +26,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
                 # assume item is an ndarray
                 grp.create_dataset(slot, data=item)
 
-    def save_hdf5(self, filename):
+    def save_hdf5(self, filename: str):
         '''
         Save the data from this class instance to an HDF5 file.
         '''
@@ -34,7 +34,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
             self.save_group(f)
 
     @classmethod
-    def from_group(cls, grp):
+    def from_group(cls, grp: h5py.Group):
         '''
         Load data from an HDF5 group and return an instance of this class.
         '''
@@ -49,7 +49,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
         return cls(**slots_dict)
 
     @classmethod
-    def from_hdf5(cls, filename):
+    def from_hdf5(cls, filename: str):
         with h5py.File(filename, 'r') as f:
             instance = cls.from_group(f)
         return instance
@@ -62,7 +62,7 @@ class NpzSerializable(Hdf5Serializable, metaclass=ABCMeta):
     '''
     __slots__ = ()
 
-    def save_npz(self, filename):
+    def save_npz(self, filename: str):
         '''
         Save the data from this class instance to an npz file.
         '''
@@ -70,7 +70,7 @@ class NpzSerializable(Hdf5Serializable, metaclass=ABCMeta):
         np.savez(filename, **slots_dict)
 
     @classmethod
-    def from_npz(cls, filename):
+    def from_npz(cls, filename: str):
         '''
         Load data from an npz file and return an instance of this class.
         '''
