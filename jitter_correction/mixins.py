@@ -54,7 +54,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
             instance = cls.from_group(f)
         return instance
 
-class NpzSerializable(Hdf5Serializable, metaclass=ABCMeta):
+class NpzSerializable(metaclass=ABCMeta):
     '''
     A mixin which allows class instances to be saved as NPZ files.
     Subclasses are expected to be dataclasses with slots, with only
