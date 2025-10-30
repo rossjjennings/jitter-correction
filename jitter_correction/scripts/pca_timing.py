@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import svd
 
 from ..toas import toa_fourier
-from ..pca.gtm import toa_pca
+from ..pca.gtm import toa_gtm
 from ..signal import fft_roll
 
 def main():
@@ -42,7 +42,7 @@ def main():
         all_toas = np.empty((args.npcs - args.nmin + 1, profiles.shape[0]))
         for n in all_n_pcs:
             for i, profile in enumerate(profiles):
-                result = toa_pca(template, pcs[:n], profile)
+                result = toa_gtm(template, pcs[:n], profile)
                 all_toas[n-args.nmin,i] = result.toa
             toas = all_toas[n-args.nmin]
             true_toas = np.load(args.true_toas)['true_toas']
@@ -56,7 +56,7 @@ def main():
     else:
         toas = np.empty(profiles.shape[0])
         for i, profile in enumerate(profiles):
-            result = toa_pca(template, pcs[:n_pcs], profile)
+            result = toa_gtm(template, pcs[:n_pcs], profile)
             toas[i] = result.toa
 
     if args.plot is not None:

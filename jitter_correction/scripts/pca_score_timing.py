@@ -7,7 +7,7 @@ from collections import namedtuple
 
 from ..toas import toa_fourier
 from ..signal import fft_roll
-from ..pca.pcs import plot_pcs
+from ..pca.pcs import plot_pcs, PrincipalComponentModel
 
 ToaScoreResult = namedtuple('ToaResult', ['toa', 'ampl', 'scores'])
 
@@ -28,7 +28,7 @@ def toa_score(template, pcs, coeffs, profile, ts = None, tol = sqrt(np.finfo(np.
     dt = float(ts[1] - ts[0])
     k = len(pcs)
 
-    result = toa_fourier(template, profile, ts = ts, tol = tol)
+    result = toa_fourier(template, profile, dt=dt, tol=tol)
     initial_toa = result.toa
     ampl = result.ampl
 
@@ -103,7 +103,9 @@ def main():
             toas[i] = result.toa
 
     if args.plot is not None:
-        fig, axes = plot_pcs(template, pcs, eigvals, n_pcs)
+        phase = np.linspace(-0.5, 0.5, template.shape[0], endpoint=False)
+        model = PrincipalComponentModel(phase, template, pcs, eigvals)
+        fig, axes = plot_pcs(model, n_pcs)
         plt.show()
         
         profile_number = np.arange(profiles.shape[0])

@@ -405,7 +405,7 @@ def gen_data(
     Generated simulated data based on a pulse specification.
     '''
     phase = np.linspace(-1/2, 1/2, n_bins, endpoint=False)
-    data = gen_profiles(phase, spec=spec, n_profiles=n_profiles, npprof=npprof, snr=snr)
+    data = gen_profiles(spec, phase, n_profiles=n_profiles, npprof=npprof, snr=snr)
     profiles = data.profiles
 
     shifts = drift_bins/n_profiles*np.arange(n_profiles)
@@ -420,7 +420,7 @@ def gen_data_from_config(config: dict[str, Any]) -> ProfileData:
     Generate profiles based on configuration data, which may be loaded from a
     TOML configuration file or passed in directly as a dictionary.
     """
-    spec = PulseSpec.from_fwhms(**config['pulse_spec'])
+    spec = PulseSpec.new(**config['pulse_spec'])
     data = gen_data(spec, **config['data'])
     profiles = data.profiles
     if 'ripple' in config:

@@ -23,19 +23,19 @@ def main():
     parser.add_argument('-p', '--plot', action='store_true', help='Show a plot of the template')
     args = parser.parse_args()
     config = toml.load(args.config)
-    spec = PulseSpec.from_fwhms(**config['pulse_spec'])
+    spec = PulseSpec.new(**config['pulse_spec'])
     n_bins = config['data']['n_bins']
     n_profiles = config['data']['n_profiles']
-    SNR = config['data']['SNR']
+    snr = config['data']['snr']
     phase = np.linspace(-1/2, 1/2, n_bins, endpoint=False)
 
     template = spec.template(phase)
     template_deriv = np.gradient(template, phase)
     w_eff = np.sqrt(1/trapz(template_deriv**2, phase))
-    toa_err = w_eff/(SNR*np.sqrt(n_bins))
+    toa_err = w_eff/(snr*np.sqrt(n_bins))
     err_bins = n_bins*toa_err
     print(f'Effective width: {w_eff:g}')
-    print(f'Signal-to-noise ratio: {SNR:g}')
+    print(f'Signal-to-noise ratio: {snr:g}')
     print(f'Number of phase bins: {n_bins:g}')
     print(f'Expected TOA error: {toa_err:g} ({err_bins:g} bins)')
 
@@ -45,7 +45,7 @@ def main():
         plt.ylabel('Intensity (relative to peak)')
         plt.show(block=False)
 
-    profiles = template + randn(n_profiles, n_bins)/SNR
+    profiles = template + randn(n_profiles, n_bins)/snr
     toas = np.empty(n_profiles)
     for i, profile in enumerate(profiles):
         result = toa_fourier(template, profile)
