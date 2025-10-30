@@ -15,7 +15,7 @@ from .signal import fft_roll
 @nb.njit
 def _gamma_ampl(mean, modindex):
     '''
-    A random amplitude drawn from a lognormal distribution.
+    A random amplitude drawn from a gamma distribution.
 
     Inputs
     ------
