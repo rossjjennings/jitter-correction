@@ -73,7 +73,7 @@ def extract_pcs(
                 principal components, and eigenvalues.
     '''
     if initial_template is None:
-        initial_template = get_template(data.profiles, n_iter=0)
+        initial_template = get_template(data, n_iter=0)
 
     toas = np.zeros(data.n_profiles)
     for i, profile in enumerate(data.profiles):
@@ -94,12 +94,11 @@ def extract_pcs(
             ampl = np.dot(profile, template)/np.dot(template, template)
             resids[j] = profile - ampl*template
         u, s, pcs = svd(resids, full_matrices=return_all)
-        eigvals = s**2/data.n_profiles
 
         scores = np.dot(pcs, profiles_aligned.T)
         dtoas = toas - trend
     else:
-        profiles_aligned = np.empty_like(profiles)
+        profiles_aligned = np.empty_like(data.profiles)
         for j, profile in enumerate(data.profiles):
             profiles_aligned[j] = fft_roll(profile, -toas[j])
 
@@ -116,6 +115,7 @@ def extract_pcs(
         scores = np.dot(pcs, profiles_aligned.T)
         dtoas = toas - trend
 
+    eigvals = s**2/data.n_profiles
     model = PrincipalComponentModel(data.phase, template, pcs, eigvals)
     return PrincipalComponentResults(model, scores, dtoas)
 

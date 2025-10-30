@@ -1,6 +1,8 @@
 import numpy as np
 
-def skewness_function(profile):
+from .profile_data import ProfileData
+
+def skewness_function(profile: np.ndarray) -> np.ndarray:
     '''
     Calculates the skewness function
        K(tau) = <I(t)**2 I(t+tau) - I(t) I(t+tau)**2> / <I(t)**3>.
@@ -15,7 +17,11 @@ def skewness_function(profile):
     skewness = T_plus - T_minus
     return skewness
 
-def skewness_coeff(lags, skewness, nlags=16):
+def skewness_coeff(
+    lags: np.ndarray,
+    skewness: np.ndarray,
+    nlags: int | np.integer = 16,
+) -> np.floating:
     '''
     Approximate the coefficient of tau**3 in the expansion of the skewness
     function around the origin by fitting a fifth-degree polynomial to the
@@ -28,17 +34,17 @@ def skewness_coeff(lags, skewness, nlags=16):
     coeffs = np.polyfit(lags[sl], skewness[sl], 5)
     return coeffs[2]
 
-def calc_skewness_coeffs(profiles):
+def calc_skewness_coeffs(data: ProfileData) -> np.ndarray:
     '''
     Calculate skewness coefficients for a set of profiles.
     '''
-    n_profiles, n_bins = profiles.shape
+    n_profiles, n_bins = data.profiles.shape
     lags = np.empty(2*n_bins-1)
     lags[n_bins-1:] = np.linspace(0, 1, n_bins)
     lags[:n_bins-1] = -np.linspace(0, 1, n_bins)[:0:-1]
 
     skewness_fns = np.empty((n_profiles, 2*n_bins-1))
-    for i, profile in enumerate(profiles):
+    for i, profile in enumerate(data.profiles):
         skewness_fn = skewness_function(profile)
         skewness_fns[i] = skewness_fn
     skewness_coeffs = np.array([
