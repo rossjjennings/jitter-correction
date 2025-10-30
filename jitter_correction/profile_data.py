@@ -52,12 +52,12 @@ class ProfileData(NpzSerializable, Hdf5Serializable):
         yield self.profiles
 
 def gen_pulses(
-        phase: np.ndarray,
-        n_pulses: int | np.integer = 5000,
-        snr: float | np.floating = np.inf,
-        ampl_dist: str = 'gamma',
-        spec: PulseSpec = PulseSpec(),
-    ) -> ProfileData:
+    phase: np.ndarray,
+    n_pulses: int | np.integer = 5000,
+    snr: float | np.floating = np.inf,
+    ampl_dist: str = 'gamma',
+    spec: PulseSpec = PulseSpec(),
+) -> ProfileData:
     '''
     Generate synthetic pulses from a model with several Gaussian components.
 
@@ -104,13 +104,13 @@ def gen_pulses(
     return ProfileData(phase, profiles)
 
 def gen_profiles(
-        phase: np.ndarray,
-        n_profiles: int | np.integer = 10,
-        npprof: int | np.integer = 1000,
-        snr: float | np.floating = np.inf,
-        ampl_dist: str = 'gamma',
-        spec: PulseSpec = PulseSpec(),
-    ) -> ProfileData:
+    phase: np.ndarray,
+    n_profiles: int | np.integer = 10,
+    npprof: int | np.integer = 1000,
+    snr: float | np.floating = np.inf,
+    ampl_dist: str = 'gamma',
+    spec: PulseSpec = PulseSpec(),
+) -> ProfileData:
     '''
     Generate average profiles from a model with several Gaussian components.
     Averages pulses in the time domain, generating the Gaussian shape for each.
@@ -164,12 +164,12 @@ def gen_profiles(
     return ProfileData(phase, profiles)
 
 def gen_pseudo_profiles(
-        phase: np.ndarray,
-        n_profiles: int | np.integer = 100,
-        npprof: int | np.integer = 10000,
-        snr: float | np.floating = np.inf,
-        spec: PulseSpec = PulseSpec(),
-    ) -> ProfileData:
+    phase: np.ndarray,
+    n_profiles: int | np.integer = 100,
+    npprof: int | np.integer = 10000,
+    snr: float | np.floating = np.inf,
+    spec: PulseSpec = PulseSpec(),
+) -> ProfileData:
     '''
     Generate synthetic "average profiles" from a model with several Gaussian
     components. Does not actually average generated pulses, but instead
@@ -303,13 +303,13 @@ class ProfileModel:
         return ProfileData(phase, profiles)
 
 def gen_data(
-        spec: PulseSpec,
-        n_profiles: int | np.integer,
-        npprof: int | np.integer,
-        n_bins: int | np.integer,
-        snr: float | np.floating,
-        drift_bins: float | np.floating,
-    ) -> ProfileData:
+    spec: PulseSpec,
+    n_profiles: int | np.integer,
+    npprof: int | np.integer,
+    n_bins: int | np.integer,
+    snr: float | np.floating,
+    drift_bins: float | np.floating,
+) -> ProfileData:
     '''
     Generated simulated data based on a pulse specification.
     '''
