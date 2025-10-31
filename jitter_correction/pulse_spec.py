@@ -4,7 +4,7 @@ from numpy.random import random, randn
 from numpy.typing import ArrayLike
 from scipy import stats
 from dataclasses import dataclass
-from typing import Self
+from typing import Self, Iterator
 
 from .mixins import NpzSerializable
 
@@ -142,7 +142,7 @@ class PulseSpec(NpzSerializable):
             modindex=modindex,
         )
 
-    def components(self):
+    def components(self) -> Iterator[Subpulse]:
         '''
         Return an iterator yielding the components of the pulse as `Subpulse` objects.
         '''
@@ -155,13 +155,13 @@ class PulseSpec(NpzSerializable):
                 rec.modindex,
             )
 
-    def normalize(self):
+    def normalize(self) -> None:
         '''
         Normalize the amplitudes of the pulse components to unit maximum.
         '''
         self.data.amplitude /= np.max(self.data.amplitude)
 
-    def template_components(self):
+    def template_components(self) -> Iterator[Subpulse]:
         '''
         Return an iterator yielding the components of the template as `Subpulse` objects.
         '''
@@ -170,7 +170,7 @@ class PulseSpec(NpzSerializable):
             c.width = c.width*np.sqrt(1+c.fj**2)
             yield c
 
-    def template(self, phase: np.ndarray):
+    def template(self, phase: np.ndarray) -> np.ndarray:
         '''
         Return the template shape given by this pulse specification.
         
@@ -183,7 +183,7 @@ class PulseSpec(NpzSerializable):
             template += c.amplitude*exp(-(phase-c.loc)**2/(2*c.width**2))
         return template
 
-    def template_deriv(self, phase: np.ndarray):
+    def template_deriv(self, phase: np.ndarray) -> np.ndarray:
         '''
         Return the derivative of the template given by this pulse specification.
         
@@ -197,7 +197,7 @@ class PulseSpec(NpzSerializable):
                                * exp(-(phase-c.loc)**2/(2*c.width**2)))
         return template_deriv
 
-    def covmat(self, phase: np.ndarray):
+    def covmat(self, phase: np.ndarray) -> np.ndarray:
         '''
         Return the covariance matrix of the pulses given by this pulse specification.
         
