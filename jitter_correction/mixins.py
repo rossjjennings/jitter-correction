@@ -23,7 +23,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
                 subgrp = grp.create_group(slot)
                 item.save_group(subgrp)
             else:
-                # assume item is an ndarray
+                # assume item is an ndarray or numpy scalar
                 grp.create_dataset(slot, data=item)
 
     def save_hdf5(self, filename: str):
@@ -41,11 +41,16 @@ class Hdf5Serializable(metaclass=ABCMeta):
         slots_dict = {}
         type_hints = typing.get_type_hints(cls)
         for slot in cls.__slots__:
-            if issubclass(type_hints[slot], Hdf5Serializable):
+            try:
+                recursive = issubclass(type_hints[slot], Hdf5Serializable)
+            except TypeError:
+                recursive = False
+            if recursive:
                 item = type_hints[slot].from_group(grp[slot])
                 slots_dict[slot] = item
-            elif issubclass(type_hints[slot], ArrayLike):
-                slots_dict[slot] = np.asanyarray(grp[slot])
+            else:
+                # assume item is an ndarray or numpy scalar
+                slots_dict[slot] = np.asarray(grp[slot])[()]
         return cls(**slots_dict)
 
     @classmethod

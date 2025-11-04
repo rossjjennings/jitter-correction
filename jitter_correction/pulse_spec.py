@@ -6,7 +6,7 @@ from scipy import stats
 from dataclasses import dataclass
 from typing import Self, Iterator
 
-from .mixins import NpzSerializable
+from .mixins import NpzSerializable, Hdf5Serializable
 
 @dataclass(slots=True)
 class Subpulse:
@@ -29,7 +29,7 @@ class Subpulse:
     modindex: float | np.floating
 
 @dataclass(slots=True)
-class PulseSpec(NpzSerializable):
+class PulseSpec(NpzSerializable, Hdf5Serializable):
     '''
     Specification of a multi-component Gaussian model for generating pulses.
     
@@ -56,6 +56,12 @@ class PulseSpec(NpzSerializable):
                             widths rather than single-pulse widths.
     '''
     data: np.recarray
+
+    def __init__(self, data):
+        '''
+        Basic initialization: convert data to a record array
+        '''
+        self.data = np.rec.array(data)
 
     @classmethod
     def new(
