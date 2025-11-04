@@ -1,22 +1,35 @@
 import numpy as np
-from abc import ABCmeta, abstractmethod
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
+from loguru import logger
+from typing import Any
+
+from .pulse_spec import PulseSpec
+from .profile_data import ProfileData, gen_profiles
+from .signal import fft_roll
+
+DM_CONST = 1/2.41e-4 # MHz**2 s cm**3 pc**-1
 
 class RFI(metaclass=ABCMeta):
     '''
     Abstract base class for all RFI sources
     '''
     @abstractmethod
-    def generate(rng: np.random.Generator) -> np.ndarray:
+    def realize(phase: np.ndarray) -> np.ndarray:
+        '''
+        Return a realization of the RFI source.
+        Should have the same shape as `phase`.
+        '''
         pass
 
 @dataclass(slots=True)
-class RippleRFI:
+class RippleRFI(RFI):
     freq: float | np.floating # ripple cycles / pulse period
     amplitude: float | np.floating # rel. pulse peak
 
-    def generate(rng: np.random.Generator) -> np.ndarray:
-        ripple_phase = self.freq
+    def realize(phase: np.ndarray) -> np.ndarray:
+        ripple_phase = self.freq*phase - np.random.random()
+        return self.amplitude*np.cos(2*np.pi*ripple_phase)
 
 @dataclass(slots=True)
 class ImpulsiveRFI(RFI):
@@ -25,6 +38,46 @@ class ImpulsiveRFI(RFI):
     center_freq: float | np.floating # in MHz
     bandwidth: float | np.floating # in MHz
     rate: float | np.floating # in MHz
+
+    def realize(phase: np.ndarray) -> np.ndarray:
+        min_lag = DM_CONST*dm/(self.center_freq + self.bandwidth/2)**2
+        max_lag = DM_CONST*dm/(self.center_freq + self.bandwidth/2)**2
+        dt = (phase[-1] - phase[-2])*period
+        length = period + max_lag - min_lag + rfi_dur - dt
+        logger.debug(f'Length is {length}')
+        logger.debug(f'Max lag is {max_lag}')
+        logger.debug(f'Min lag is {min_lag}')
+        logger.debug(f'RFI duration is {rfi_dur}')
+
+        rfi = np.zeros_like(phase)
+        n_rfi = np.random.poisson(rfi_rate*length/period)
+        logger.debug(f'Profile {i} has {n_rfi} RFI instances')
+        for j in range(n_rfi):
+            t1 = np.random.random()*length + min_lag
+            t0 = t1 - rfi_dur
+            logger.debug(f'  RFI {j} has t0={t0}, t1={t1}')
+            time = (phase + 0.5)*period
+            first_bin = np.min(np.where(time > t0 - max_lag))
+            last_bin = np.max(np.where(time <= t1 - min_lag))
+            time_slice = time[first_bin:last_bin+1]
+            logger.debug(f'  Freq: {rfi_freq} MHz')
+            if dm == 0:
+                top = rfi_freq + rfi_bw/2
+            else:
+                denom = ((t0 - time_slice < 0)*(dm_constant*dm)
+                            /(rfi_freq + rfi_bw/2)**2
+                        + (t0 - time_slice > 0)*(t0 - time_slice))
+                top = np.minimum(
+                    np.sqrt(dm_constant*dm/denom),
+                    rfi_freq + rfi_bw/2,
+                )
+            bottom = np.maximum(
+                np.sqrt(dm_constant*dm/(t1 - time_slice)),
+                rfi_freq - rfi_bw/2,
+            )
+            logger.debug(f'  Top: {top} MHz')
+            logger.debug(f'  Bottom: {bottom} MHz')
+            rfi[first_bin:last_bin+1] += rfi_ampl*(top - bottom)/rfi_bw
 
 @dataclass(slots=True)
 class ProfileModel:
@@ -39,14 +92,40 @@ class ProfileModel:
     drift_bins: float | np.floating # phase drift from beginning to end, in bins
     rfi: list[RFI] # RFI to add
 
-    def generate_data(self, rng: np.random.Generator) -> ProfileData:
+    def __init__(
+        self,
+        spec: PulseSpec,
+        n_profiles: int | np.integer,
+        npprof: int | np.integer,
+        n_bins: int | np.integer,
+        snr: float | np.floating,
+        drift_bins: float | np.floating,
+        rfi: list[RFI] | None = None,
+    ):
+        '''
+        Allow leaving out the RFI list
+        '''
+        if rfi is None:
+            rfi = []
+        self.spec = spec
+        self.n_profiles = n_profiles
+        self.npprof = npprof
+        self.n_bins = n_bins
+        self.snr = snr
+        self.drift_bins = drift_bins
+        self.rfi = rfi
+
+    @property
+    def phase(self) -> np.ndarray:
+        return np.linspace(-1/2, 1/2, self.n_bins, endpoint=False)
+
+    def generate_data(self) -> ProfileData:
         '''
         Generate profile data based on this model.
         '''
-        phase = np.linspace(-1/2, 1/2, self.n_bins, endpoint=False)
         data = gen_profiles(
-            phase,
-            spec=spec,
+            spec=self.spec,
+            phase=self.phase,
             n_profiles=self.n_profiles,
             npprof=self.npprof,
             snr=self.snr,
@@ -62,7 +141,11 @@ class ProfileModel:
         for i, profile in enumerate(data.profiles):
             profiles[i] = fft_roll(profile, shifts[i])
 
-        return ProfileData(phase, profiles)
+        for source in self.rfi:
+            for i in range(len(profiles)):
+                profiles[i] += source.realize()
+
+        return ProfileData(self.phase, profiles)
 
 def gen_data(
     spec: PulseSpec,

@@ -15,6 +15,7 @@ dependencies = [
     "numba",
     "toml",
     "pywavelets",
+    "loguru",
 ]
 
 [project.scripts]
