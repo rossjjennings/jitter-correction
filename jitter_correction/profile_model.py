@@ -89,6 +89,7 @@ class ProfileModel:
     npprof: int | np.integer # number of pulses per profile
     n_bins: int | np.integer # number of phase bins
     snr: float | np.floating # signal-to-noise ratio (determines noise level)
+    ampl_dist: str # amplitude distribution ('gamma' or 'lognorm')
     drift_bins: float | np.floating # phase drift from beginning to end, in bins
     rfi: list[RFI] # RFI to add
 
@@ -99,7 +100,8 @@ class ProfileModel:
         npprof: int | np.integer,
         n_bins: int | np.integer,
         snr: float | np.floating,
-        drift_bins: float | np.floating,
+        ampl_dist: str = 'gamma',
+        drift_bins: float | np.floating = 0.,
         rfi: list[RFI] | None = None,
     ):
         '''
@@ -112,12 +114,22 @@ class ProfileModel:
         self.npprof = npprof
         self.n_bins = n_bins
         self.snr = snr
+        self.ampl_dist = ampl_dist
         self.drift_bins = drift_bins
         self.rfi = rfi
 
     @property
     def phase(self) -> np.ndarray:
         return np.linspace(-1/2, 1/2, self.n_bins, endpoint=False)
+
+    @property
+    def shifts(self) -> np.ndarray:
+        return np.linspace(
+            -self.drift_bins/2,
+            self.drift_bins/2,
+            self.n_profiles,
+            endpoint=False
+        )
 
     def generate_data(self) -> ProfileData:
         '''
@@ -129,17 +141,12 @@ class ProfileModel:
             n_profiles=self.n_profiles,
             npprof=self.npprof,
             snr=self.snr,
-        )
-        shifts = np.linspace(
-            -self.drift_bins/2,
-            self.drift_bins/2,
-            self.n_profiles,
-            endpoint=False,
+            ampl_dist=self.ampl_dist,
         )
 
         profiles = np.empty_like(data.profiles)
         for i, profile in enumerate(data.profiles):
-            profiles[i] = fft_roll(profile, shifts[i])
+            profiles[i] = fft_roll(profile, self.shifts[i])
 
         for source in self.rfi:
             for i in range(len(profiles)):

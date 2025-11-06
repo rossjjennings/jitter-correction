@@ -4,7 +4,7 @@ from numpy.random import random, randn
 from numpy.typing import ArrayLike
 from scipy import stats
 from dataclasses import dataclass
-from typing import Self, Iterator
+from typing import Self, Iterator, NamedTuple
 
 from .mixins import NpzSerializable, Hdf5Serializable
 
@@ -57,7 +57,7 @@ class PulseSpec(NpzSerializable, Hdf5Serializable):
     '''
     data: np.recarray
 
-    def __init__(self, data):
+    def __init__(self, data: np.ndarray):
         '''
         Basic initialization: convert data to a record array
         '''

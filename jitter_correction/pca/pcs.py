@@ -48,8 +48,8 @@ def extract_pcs(
         data: ProfileData,
         n_pcs: int | np.integer,
         initial_template: np.ndarray | None = None,
-        return_all: bool | np.bool_ = True,
-        use_trend: bool | np.bool_ = True
+        return_all: bool | np.bool_ = False,
+        use_trend: bool | np.bool_ = True,
     ) -> PrincipalComponentModel:
     '''
     Extract a template and principal components from a set of profiles.
@@ -94,6 +94,8 @@ def extract_pcs(
             ampl = np.dot(profile, template)/np.dot(template, template)
             resids[j] = profile - ampl*template
         u, s, pcs = svd(resids, full_matrices=return_all)
+        if not return_all:
+            u, s, pcs = u[:,:n_pcs], s[:n_pcs], pcs[:n_pcs,:]
 
         scores = np.dot(pcs, profiles_aligned.T)
         dtoas = toas - trend
@@ -107,6 +109,8 @@ def extract_pcs(
             ampl = np.dot(profile, template)/np.dot(template, template)
             resids[j] = profile - ampl*template
         u, s, pcs = svd(resids, full_matrices=return_all)
+        if not return_all:
+            u, s, pcs = u[:,:n_pcs], s[:n_pcs], pcs[:n_pcs,:]
         sgvals = s**2/data.n_profiles
 
         # Trend used only for computing ΔTOAs
