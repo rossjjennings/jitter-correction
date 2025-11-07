@@ -16,6 +16,7 @@ dependencies = [
     "numba",
     "toml",
     "pywavelets",
+    "h5py",
     "loguru",
 ]
 
