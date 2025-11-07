@@ -4,9 +4,9 @@ from numpy.random import random, randn
 from numpy.typing import ArrayLike
 from scipy import stats
 from dataclasses import dataclass
-from numbers import Integral, Real
+from typing import Self, Iterator, NamedTuple
 
-from .mixins import NpzSerializable
+from .mixins import NpzSerializable, Hdf5Serializable
 
 @dataclass(slots=True)
 class Subpulse:
@@ -22,76 +22,152 @@ class Subpulse:
     fj        : Jitter parameter (std. dev. of location over `width`).
     modindex  : Modulation index (std. dev. of amplitude over `amplitude`).
     '''
-    amplitude: Real
-    loc: Real
-    width: Real
-    fj: Real
-    modindex: Real
+    amplitude: float | np.floating
+    loc: float | np.floating
+    width: float | np.floating
+    fj: float | np.floating
+    modindex: float | np.floating
 
 @dataclass(slots=True)
-class PulseSpec(NpzSerializable):
+class PulseSpec(NpzSerializable, Hdf5Serializable):
     '''
     Specification of a multi-component Gaussian model for generating pulses.
     
     Data attributes
     ---------------
-    amplitudes : Amplitudes of the components.
-    locs       : Locations of the component centers, in phase units.
-    widths     : Widths of the components, in phase units.
-                 Defined in an RMS sense. These should be the single-pulse
-                 widths; template widths can be used with the factory
-                 function `from_template_widths()`.
-    fj         : Jitter parameter (std. dev. of location over `width`).
-                 Per-component list of values.
-    modindex   : Modulation index (std. dev. of amplitude over amplitude).
-                 Per-component list of values.
+    data: Record array containing columns:
+      * amplitude: Amplitudes of the components.
+      * loc:       Locations of the component centers, in phase units.
+      * width:     Widths of the components, in phase units.
+                   Defined in an RMS sense. These should be the single-pulse
+                   widths; template widths can be used with the factory
+                   function `from_template()`.
+      * fj:        Jitter parameter (std. dev. of location over `width`).
+      * modindex:  Modulation index (std. dev. of amplitude over amplitude).
     
     Methods
     -------
-    components() : The components of the pulse as `Subpulse` objects.
-    normalize()  : Normalize amplitudes to a maximum of 1.
+    components(): The components of the pulse as `Subpulse` objects.
+    normalize():  Normalize amplitudes to a maximum of 1.
     
     Class methods
     -------------
     from_template_widths(): Create a `PulseSpec` object using template
                             widths rather than single-pulse widths.
     '''
-    amplitudes: ArrayLike
-    locs: ArrayLike
-    widths: ArrayLike
-    fj: ArrayLike
-    modindex: ArrayLike
+    data: np.recarray
 
-    def __init__(self, amplitudes=[1., 0.4], locs=[-0.06, 0.06],
-                 widths=[0.05, 0.05], fj=[0.1, 0.1], modindex=[1., 1.]):
-        
-        if not (len(amplitudes) == len(locs) == len(widths) == len(fj) == len(modindex)):
-            err_msg = """
-            lengths of 'amplitudes', 'locs', 'widths', 'fj', and 'modindex' should match.
-            """
-            raise ValueError(err_msg)
-        
-        self.amplitudes = amplitudes
-        self.locs = locs
-        self.widths = widths
-        self.fj = fj
-        self.modindex = modindex
-    
-    def components(self):
+    def __init__(self, data: np.ndarray):
+        '''
+        Basic initialization: convert data to a record array
+        '''
+        self.data = np.rec.array(data)
+
+    @classmethod
+    def new(
+        cls,
+        amplitude: ArrayLike,
+        loc: ArrayLike,
+        fj: ArrayLike,
+        modindex: ArrayLike,
+        width: ArrayLike | None = None,
+        fwhm: ArrayLike | None = None,
+    ) -> Self:
+        '''
+        Generate a PulseSpec object using per-component lists of values.
+
+        Inputs
+        ------
+        amplitude: Amplitudes of the components.
+        loc:       Locations of the component centers, in phase units.
+        width:     Widths of the components, in phase units.
+                   Defined in an RMS sense. These should be the single-pulse
+                   widths; template widths can be used with the factory
+                   function `from_template_widths()`.
+        fwhm:      Full widths at half max of the pulse components,
+                   in phase units. These should be the single-pulse widths.
+                   Either this or `width` must be specified (not `None`).
+        fj:        Jitter parameter (std. dev. of location over `width`).
+                   Per-component list of values.
+        modindex:  Modulation index (std. dev. of amplitude over amplitude).
+                   Per-component list of values.
+        '''
+        if width is None:
+            if fwhm is not None:
+                width = np.array(fwhm)/(2*np.sqrt(2*np.log(2)))
+            else:
+                raise ValueError("either `width` or `fwhm` must be specified")
+
+        data = np.rec.fromarrays(
+            [amplitude, loc, width, fj, modindex],
+            names=['amplitude', 'loc', 'width', 'fj', 'modindex'],
+        )
+        return cls(data)
+
+    @classmethod
+    def from_template(
+        cls,
+        amplitude: ArrayLike,
+        loc: ArrayLike,
+        fj: ArrayLike,
+        modindex: ArrayLike,
+        width: ArrayLike | None = None,
+        fwhm: ArrayLike | None = None,
+    ) -> Self:
+        '''
+        Generate a `PulseSpec` object using template widths and amplitudes
+        rather than the single pulse parameters.
+
+        Inputs
+        ------
+        amplitude: Amplitudes of the components.
+        loc:       Locations of the component centers, in phase units.
+        width:     The widths of the pulse components, in phase units.
+                   Defined in an RMS sense. These should be the template widths.
+        fwhm:      Full widths at half max of the pulse components,
+                   in phase units. These should be the template widths.
+                   Either this or `width` must be specified (not `None`).
+        fj:        Jitter parameter (std. dev. of location over `width`).
+                   Per-component list of values.
+        modindex:  Modulation index (std. dev. of amplitude over amplitude).
+                   Per-component list of values.
+        '''
+        if width is None:
+            if fwhm is not None:
+                width = np.array(fwhm)/(2*np.sqrt(2*np.log(2)))
+            else:
+                raise ValueError("either `width` or `fwhm` must be specified")
+
+        single_pulse_ampl = np.array(amplitude)*np.sqrt(1+np.array(fj)**2)
+        single_pulse_width = np.array(width)/np.sqrt(1+np.array(fj)**2)
+        return cls(
+            amplitude=single_pulse_ampl,
+            locs=loc,
+            widths=single_pulse_width,
+            fj=fj,
+            modindex=modindex,
+        )
+
+    def components(self) -> Iterator[Subpulse]:
         '''
         Return an iterator yielding the components of the pulse as `Subpulse` objects.
         '''
-        for parameters in zip(self.amplitudes, self.locs, self.widths, self.fj, self.modindex):
-            yield Subpulse(*parameters)
-    
-    def normalize(self):
+        for rec in self.data:
+            yield Subpulse(
+                rec.amplitude,
+                rec.loc,
+                rec.width,
+                rec.fj,
+                rec.modindex,
+            )
+
+    def normalize(self) -> None:
         '''
         Normalize the amplitudes of the pulse components to unit maximum.
         '''
-        max_amplitude = max(amplitudes)
-        amplitudes = [amplitude/max_amplitude for amplitude in amplitudes]
-    
-    def template_components(self):
+        self.data.amplitude /= np.max(self.data.amplitude)
+
+    def template_components(self) -> Iterator[Subpulse]:
         '''
         Return an iterator yielding the components of the template as `Subpulse` objects.
         '''
@@ -99,8 +175,8 @@ class PulseSpec(NpzSerializable):
             c.amplitude = c.amplitude/np.sqrt(1+c.fj**2)
             c.width = c.width*np.sqrt(1+c.fj**2)
             yield c
-    
-    def template(self, phase):
+
+    def template(self, phase: np.ndarray) -> np.ndarray:
         '''
         Return the template shape given by this pulse specification.
         
@@ -112,8 +188,8 @@ class PulseSpec(NpzSerializable):
         for c in self.template_components():
             template += c.amplitude*exp(-(phase-c.loc)**2/(2*c.width**2))
         return template
-    
-    def template_deriv(self, phase):
+
+    def template_deriv(self, phase: np.ndarray) -> np.ndarray:
         '''
         Return the derivative of the template given by this pulse specification.
         
@@ -126,8 +202,8 @@ class PulseSpec(NpzSerializable):
             template_deriv += (-c.amplitude*(phase-c.loc)/c.width**2
                                * exp(-(phase-c.loc)**2/(2*c.width**2)))
         return template_deriv
-    
-    def covmat(self, phase):
+
+    def covmat(self, phase: np.ndarray) -> np.ndarray:
         '''
         Return the covariance matrix of the pulses given by this pulse specification.
         
@@ -146,52 +222,3 @@ class PulseSpec(NpzSerializable):
             expt2 /= -2*(1 + c.fj**2)*c.width**2
             covmat += prefactor1*exp(expt1) - prefactor2*exp(expt2)
         return covmat
-    
-    @classmethod
-    def from_template(cls, amplitudes=[1., 0.4], widths=[0.05, 0.05], fj=[0.1, 0.1], **kwargs):
-        '''
-        Generate a `PulseSpec` object using template widths and amplitudes
-        rather than the single pulse parameters.
-        
-        Inputs
-        ------
-        widths : The widths of the pulse components, in phase units.
-                 Defined in an RMS sense. These should be the template widths.
-        amplitudes, locs, fj, modindex : See class docstring.
-        '''
-        single_pulse_ampls = [ampl*np.sqrt(1+fj**2) for (ampl, fj) in zip (amplitudes, fj)]
-        single_pulse_widths = [width/np.sqrt(1+fj**2) for (width, fj) in zip (widths, fj)]
-        return cls(amplitudes=single_pulse_ampls, widths=single_pulse_widths, fj=fj, **kwargs)
-    
-    @classmethod
-    def from_fwhms(cls, fwhms=[0.10, 0.10], **kwargs):
-        '''
-        Generate a `PulseSpec` object using the full width at half max (FWHM)
-        of each component rather than the RMS width.
-        
-        Inputs
-        ------
-        fwhms : The full widths at half max of the pule components, in phase units.
-                These should be the single-pulse widths.
-        amplitudes, locs, fj, modindex : See class docstring.
-        '''
-        widths = [fwhm/(2*np.sqrt(2*np.log(2))) for fwhm in fwhms]
-        return cls(widths=widths, **kwargs)
-    
-    @classmethod
-    def from_template_fwhms(cls, amplitudes=[1., 0.4], fwhms=[0.10, 0.10], fj=[0.1, 0.1], **kwargs):
-        '''
-        Generate a `PulseSpec` object using the full width at half max (FWHM)
-        of each component in the template, rather than the RMS width of the component
-        in an individual pulse.
-        
-        Inputs
-        ------
-        fwhms : The full widths at half max of the pulse components, in phase units.
-                These should be the template widths.
-        amplitudes, locs, fj, modindex : See class docstring.
-        '''
-        single_pulse_ampls = [ampl*np.sqrt(1+fj**2) for (ampl, fj) in zip (amplitudes, fj)]
-        single_pulse_widths = [fwhm/(2*np.sqrt(2*(1+fj**2)*np.log(2)))
-                               for (fwhm, fj) in zip (fwhms, fj)]
-        return cls(amplitudes=single_pulse_ampls, widths=single_pulse_widths, fj=fj, **kwargs)

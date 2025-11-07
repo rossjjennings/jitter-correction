@@ -2,11 +2,15 @@ import numpy as np
 from numpy import pi, sin, cos, exp, log, sqrt
 from numpy.fft import fft, ifft, fftfreq, rfft, irfft, rfftfreq
 from numpy.random import randn
-from collections import namedtuple
+from typing import NamedTuple, Iterator, Self
 from scipy.optimize import minimize_scalar
+from collections.abc import Callable
+from dataclasses import dataclass
 import sys
 
 from .signal import fft_roll, rolling_sum, interp_ws
+from .profile_data import ProfileData
+from .mixins import NpzSerializable, Hdf5Serializable
 
 eps = np.finfo(np.float64).eps
 if hasattr(np, "trapezoid"):
@@ -15,7 +19,7 @@ if hasattr(np, "trapezoid"):
 else:
     trapz = np.trapz
 
-def offpulse_window(profile, size):
+def offpulse_window(profile: np.ndarray, size: int | np.integer) -> np.ndarray:
     '''
     Find the off-pulse window of a given profile, defined as the
     segment of pulse phase of length `size` (in phase bins)
@@ -26,7 +30,7 @@ def offpulse_window(profile, size):
     upper = lower + size
     return np.logical_and(lower <= bins, bins < upper)
 
-def offpulse_rms(profile, size):
+def offpulse_rms(profile: np.ndarray, size: int | np.integer) -> np.floating:
     '''
     Calculate the off-pulse RMS of a profile (a measure of noise level).
     This is the RMS of `profile` in the segment of length `size`
@@ -35,9 +39,45 @@ def offpulse_rms(profile, size):
     opw = offpulse_window(profile, size)
     return np.sqrt(np.mean(profile[opw]**2))
 
-ToaResult = namedtuple('ToaResult', ['toa', 'error', 'ampl'])
+class ToaResult(NamedTuple):
+    '''
+    Represents the result of fitting for a TOA.
+    '''
+    toa: float | np.floating
+    error: float | np.floating
+    ampl: float | np.floating
 
-def toa_ws(template, profile, dt=1, noise_level=None, tol=sqrt(eps)):
+@dataclass(slots=True)
+class ToaResults(NpzSerializable, Hdf5Serializable):
+    '''
+    Represents the result of fitting for TOAs for several profiles.
+    '''
+    data: np.recarray
+
+    def __init__(self, data: np.ndarray):
+        self.data = np.rec.array(data)
+
+    def __iter__(self) -> Iterator[ToaResult]:
+        for rec in self.data:
+            yield ToaResult(*rec)
+
+    def __getitem__(self, key) -> ToaResult | Self:
+        item = self.data[key]
+        if item.shape == ():
+            return ToaResult(*item)
+        else:
+            return ToaResults(item)
+
+    def __getattr__(self, attr):
+        return getattr(self.data, attr)
+
+def toa_ws(
+    template: np.ndarray,
+    profile: np.ndarray,
+    dt: float | np.floating = 1.,
+    noise_level: float | np.floating | None = None,
+    tol: float | np.floating = sqrt(eps),
+) -> ToaResult:
     '''
     Calculate a TOA by maximizing the Whittaker-Shannon interpolant of the 
     CCF between `template` and `profile`. Searches within the interval
@@ -75,7 +115,13 @@ def toa_ws(template, profile, dt=1, noise_level=None, tol=sqrt(eps)):
 
     return ToaResult(toa=toa, error=error, ampl=ampl)
 
-def toa_fourier(template, profile, dt=1, noise_level=None, tol=sqrt(eps)):
+def toa_fourier(
+    template: np.ndarray,
+    profile: np.ndarray,
+    dt: float | np.floating = 1.,
+    noise_level: float | np.floating | None = None,
+    tol: float | np.floating = sqrt(eps),
+) -> ToaResult:
     '''
     Calculate a TOA by maximizing the CCF of the template and the profile
     in the frequency domain. Searches within the interval between the sample
@@ -123,7 +169,15 @@ def toa_fourier(template, profile, dt=1, noise_level=None, tol=sqrt(eps)):
 
     return ToaResult(toa=toa, error=error, ampl=ampl)
 
-def test_toa_recovery(func, template, n, rms_toa, snr=np.inf, dt=1, tol=sqrt(eps)):
+def test_toa_recovery(
+    func: Callable,
+    template: np.ndarray,
+    n: int | np.integer,
+    rms_toa: float | np.floating,
+    snr: float | np.floating = np.inf,
+    dt: float | np.floating = 1.,
+    tol: float | np.floating = sqrt(eps),
+) -> tuple[np.floating, np.floating]:
     '''
     Test function for `toa_ws()` and `toa_fourier()`.
     Attempts to recover `n` TOAs at a given SNR and returns the RMS error.
@@ -134,7 +188,8 @@ def test_toa_recovery(func, template, n, rms_toa, snr=np.inf, dt=1, tol=sqrt(eps
     `n`:        Number of test profiles to generate.
     `rms_toa`:  RMS TOA for test profiles.
     `snr`:      Signal-to-noise ratio of the test profiles
-    `dt`:  The width of each phase bin in the profile. Sets the units of the TOA.
+    `dt`:       The width of each phase bin in the profile.
+                Sets the units of the TOA.
     `tol`:      Relative tolerance for optimization.
     '''
     dtoas = []
@@ -151,3 +206,32 @@ def test_toa_recovery(func, template, n, rms_toa, snr=np.inf, dt=1, tol=sqrt(eps
     dtoas = np.array(dtoas)
     toa_errs = np.array(toa_errs)
     return np.sqrt(np.mean(dtoas**2)), np.sqrt(np.mean(toa_errs**2))
+
+def get_toas(
+    template: np.ndarray,
+    data: ProfileData,
+    method: str = 'fourier',
+    noise_level: float | np.floating | None = None,
+    dt: float | np.floating = 1.,
+    tol: float | np.floating = sqrt(eps),
+) -> np.recarray:
+    '''
+    Calculate TOAs for a set of profiles.
+
+    `method`: Method used to calculate TOAs. Can be 'fourier' or 'ws'.
+           For other methods, see the corresponding functions.
+    `noise_level`: Off-pulse noise, in the same units as the profile.
+           Used in calculating error. If not supplied, noise level will be
+           estimated as the standard deviation of the profile residual.
+    `dt`:  The width of each phase bin in the profile.
+           Sets the units of the TOA.
+    `tol`: Relative tolerance for optimization (in bins).
+    '''
+    methods = {'fourier': toa_fourier, 'ws': toa_ws}
+    func = methods[method]
+    results = [
+        func(template, profile, dt, noise_level, tol)
+        for profile in data.profiles
+    ]
+    records = np.rec.fromrecords(results, names=ToaResult._fields)
+    return ToaResults(records)

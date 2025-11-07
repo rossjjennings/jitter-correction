@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jitter_correction"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     {name = "Ross Jennings", email = "ross.jennings@nanograv.org"},
 ]
@@ -13,7 +13,10 @@ dependencies = [
     "numpy",
     "scipy",
     "matplotlib",
+    "numba",
+    "toml",
     "pywavelets",
+    "loguru",
 ]
 
 [project.scripts]

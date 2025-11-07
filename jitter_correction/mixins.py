@@ -13,7 +13,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
     '''
     __slots__ = ()
 
-    def save_group(self, grp):
+    def save_group(self, grp: h5py.Group):
         '''
         Save the data from this class instance to an HDF5 group.
         '''
@@ -23,10 +23,10 @@ class Hdf5Serializable(metaclass=ABCMeta):
                 subgrp = grp.create_group(slot)
                 item.save_group(subgrp)
             else:
-                # assume item is an ndarray
+                # assume item is an ndarray or numpy scalar
                 grp.create_dataset(slot, data=item)
 
-    def save_hdf5(self, filename):
+    def save_hdf5(self, filename: str):
         '''
         Save the data from this class instance to an HDF5 file.
         '''
@@ -34,27 +34,32 @@ class Hdf5Serializable(metaclass=ABCMeta):
             self.save_group(f)
 
     @classmethod
-    def from_group(cls, grp):
+    def from_group(cls, grp: h5py.Group):
         '''
         Load data from an HDF5 group and return an instance of this class.
         '''
         slots_dict = {}
         type_hints = typing.get_type_hints(cls)
         for slot in cls.__slots__:
-            if issubclass(type_hints[slot], Hdf5Serializable):
+            try:
+                recursive = issubclass(type_hints[slot], Hdf5Serializable)
+            except TypeError:
+                recursive = False
+            if recursive:
                 item = type_hints[slot].from_group(grp[slot])
                 slots_dict[slot] = item
-            elif issubclass(type_hints[slot], ArrayLike):
-                slots_dict[slot] = np.asanyarray(grp[slot])
+            else:
+                # assume item is an ndarray or numpy scalar
+                slots_dict[slot] = np.asarray(grp[slot])[()]
         return cls(**slots_dict)
 
     @classmethod
-    def from_hdf5(cls, filename):
+    def from_hdf5(cls, filename: str):
         with h5py.File(filename, 'r') as f:
             instance = cls.from_group(f)
         return instance
 
-class NpzSerializable(Hdf5Serializable, metaclass=ABCMeta):
+class NpzSerializable(metaclass=ABCMeta):
     '''
     A mixin which allows class instances to be saved as NPZ files.
     Subclasses are expected to be dataclasses with slots, with only
@@ -62,7 +67,7 @@ class NpzSerializable(Hdf5Serializable, metaclass=ABCMeta):
     '''
     __slots__ = ()
 
-    def save_npz(self, filename):
+    def save_npz(self, filename: str):
         '''
         Save the data from this class instance to an npz file.
         '''
@@ -70,7 +75,7 @@ class NpzSerializable(Hdf5Serializable, metaclass=ABCMeta):
         np.savez(filename, **slots_dict)
 
     @classmethod
-    def from_npz(cls, filename):
+    def from_npz(cls, filename: str):
         '''
         Load data from an npz file and return an instance of this class.
         '''
