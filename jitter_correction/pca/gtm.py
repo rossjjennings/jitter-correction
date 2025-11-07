@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from ..signal import fft_roll
 from ..toas import toa_fourier
 from ..profile_data import ProfileData
-from ..mixins import NpzSerializable, Hdf5Serializable
+from ..mixins import NpzSerializable, Hdf5Serializable, RecordContainer
 from .pcs import PrincipalComponentModel
 
 eps=np.finfo(np.float64).eps
@@ -25,29 +25,12 @@ class ToaGtmResult(NamedTuple):
     scores: np.ndarray
 
 @dataclass(slots=True)
-class ToaGtmResults(NpzSerializable, Hdf5Serializable):
+class ToaGtmResults(NpzSerializable, Hdf5Serializable, metaclass=RecordContainer):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
     data: np.recarray
-    scores: np.ndarray
-
-    def __init__(self, data: np.ndarray):
-        self.data = np.rec.array(data)
-
-    def __iter__(self) -> Iterator[ToaGtmResult]:
-        for rec in self.data:
-            yield ToaGtmResult(*rec)
-
-    def __getitem__(self, key) -> ToaGtmResult | Self:
-        item = self.data[key]
-        if item.shape == ():
-            return ToaGtmResult(*item)
-        else:
-            return ToaGtmResults(item)
-
-    def __getattr__(self, attr):
-        return getattr(self.data, attr)
+    record_type = ToaGtmResult
 
 def toa_gtm(
     model: PrincipalComponentModel,
@@ -177,11 +160,12 @@ def get_toas_gtm(
     tol: float | np.floating = np.sqrt(eps),
 ) -> ToaGtmResults:
     '''
-    Calculate TOAs for a set of profiles.
+    Calculate TOAs for a set of profiles using generalized template matching.
 
-    `dt`:  The width of each phase bin in the profile.
-           Sets the units of the TOA.
-    `tol`: Relative tolerance for optimization (in bins).
+    `model`:  The principal components model, including template and PCs.
+    `data`:   Profile data from which to compute TOAs.
+    `dt`:     The width of each phase bin in the profile. Sets the units of the TOA.
+    `tol`:    Relative tolerance for optimization (in bins).
     '''
     n_pcs = len(model.pcs)
     results = [

@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 import typing
-from numpy.typing import ArrayLike
+from typing import Iterator, Self
 from dataclasses import dataclass
 
 class Hdf5Serializable:
@@ -80,3 +80,45 @@ class NpzSerializable:
         '''
         npz = np.load(filename)
         return cls(**npz)
+
+class RecordContainer(type):
+    '''
+    Given a record type (class inheriting from NamedTuple), allows creating
+    a container type which internally stores records of the given type in a
+    record array, and allows iterating, slicing, and accessing fields by name.
+
+    Creating the container type is done by subclassing `RecordContainer` and
+    giving the subclass an attribute `record_type` which stores the associated
+    record type.
+    '''
+    def __new__(mcls, name, bases, namespace):
+        try:
+            record_type = namespace['record_type']
+        except KeyError:
+            raise TypeError("RecordContainer must have a record type")
+
+        def __init__(self, data: np.ndarray):
+            self.data = np.rec.array(data)
+
+        def __iter__(self) -> Iterator[record_type]:
+            for rec in self.data:
+                yield record_type(*rec)
+
+        def __getitem__(self, key) -> record_type | Self:
+            item = self.data[key]
+            if item.shape == ():
+                return record_type(*item)
+            else:
+                return type(self)(item)
+
+        def __getattr__(self, attr):
+            return getattr(self.data, attr)
+
+        namespace.update({
+            '__init__': __init__,
+            '__iter__': __iter__,
+            '__getitem__': __getitem__,
+            '__getattr__': __getattr__,
+        })
+
+        return super().__new__(mcls, name, bases, namespace)

@@ -7,7 +7,9 @@ from dataclasses import dataclass
 
 from ..signal import fft_roll
 from ..toas import toa_fourier
-from ..mixins import NpzSerializable, Hdf5Serializable
+from ..profile_data import ProfileData
+from ..mixins import NpzSerializable, Hdf5Serializable, RecordContainer
+from .pcs import PrincipalComponentModel
 
 eps=np.finfo(np.float64).eps
 
@@ -17,37 +19,27 @@ class ToaScoreResult(NamedTuple):
     scores: np.ndarray
 
 @dataclass(slots=True)
-class ToaScoreResults(NpzSerializable, Hdf5Serializable):
+class ToaScoreResults(NpzSerializable, Hdf5Serializable, metaclass=RecordContainer):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
     data: np.recarray
+    record_type = ToaScoreResult
 
-    def __init__(self, data: np.ndarray):
-        self.data = np.rec.array(data)
-
-    def __iter__(self) -> Iterator[ToaScoreResult]:
-        for rec in self.data:
-            yield ToaScoreResult(*rec)
-
-    def __getitem__(self, key) -> ToaScoreResult | Self:
-        item = self.data[key]
-        if item.shape == ():
-            return ToaScoreResult(*item)
-        else:
-            return ToaScoreResults(item)
-
-    def __getattr__(self, attr):
-        return getattr(self.data, attr)
-
-def toa_score(template, pcs, coeffs, profile, dt=1, tol=np.sqrt(eps)):
+def toa_score(
+    model: PrincipalComponentModel,
+    coeffs: np.ndarray,
+    profile: np.ndarray,
+    dt: float | np.floating = 1.,
+    tol: float | np.floating = np.sqrt(eps),
+) -> ToaScoreResult:
     '''
     Calculate a maximum-likelihood TOA given a template and a PCA model of pulse shape variations.
     Uses the dot-product based method of Osłowski (2011).
 
-    `pcs`:    The principal components (unit vectors), as rows of an array.
-    `coeffs`: Coefficients of principal component dot products to use in correcter.
-    `dt`:  The width of each phase bin in the profile. Sets the units of the TOA.
+    `model`:  The principal components model, including template and PCs.
+    `coeffs`: Coefficients of principal component dot products to use in correction.
+    `dt`:     The width of each phase bin in the profile. Sets the units of the TOA.
     `tol`:    Relative tolerance for optimization (in bins).
     '''
     n = len(profile)
@@ -64,3 +56,34 @@ def toa_score(template, pcs, coeffs, profile, dt=1, tol=np.sqrt(eps)):
     toa = initial_toa - correcter
 
     return ToaScoreResult(toa=toa, ampl=ampl, scores=scores)
+
+def get_toas_score(
+    model: PrincipalComponentModel,
+    coeffs: np.ndarray,
+    data: ProfileData,
+    dt: float | np.floating = 1.,
+    tol: float | np.floating = np.sqrt(eps),
+) -> ToaScoreResults:
+    '''
+    Calculate TOAs for a set of profiles using the PCA score method.
+
+    `model`:  The principal components model, including template and PCs.
+    `coeffs`: Coefficients of principal component dot products to use in correction.
+    `data`:   Profile data from which to compute TOAs.
+    `dt`:     The width of each phase bin in the profile. Sets the units of the TOA.
+    `tol`:    Relative tolerance for optimization (in bins).
+    '''
+    n_pcs = len(model.pcs)
+    results = [
+        toa_score(model, coeffs, profile, dt, tol)
+        for profile in data.profiles
+    ]
+    records = np.rec.fromrecords(
+        results,
+        dtype = [
+            ('toa', np.float64),
+            ('ampl', np.float64),
+            ('scores', np.float64, (n_pcs,)),
+        ],
+    )
+    return ToaScoreResults(records)
