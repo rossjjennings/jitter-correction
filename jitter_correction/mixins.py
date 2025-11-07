@@ -2,10 +2,9 @@ import numpy as np
 import h5py
 import typing
 from numpy.typing import ArrayLike
-from abc import abstractmethod, ABCMeta
 from dataclasses import dataclass
 
-class Hdf5Serializable(metaclass=ABCMeta):
+class Hdf5Serializable:
     '''
     A mixin which allows class instances to be saved as HDF5 files.
     Subclasses are expected to be dataclasses with slots, with instance
@@ -59,7 +58,7 @@ class Hdf5Serializable(metaclass=ABCMeta):
             instance = cls.from_group(f)
         return instance
 
-class NpzSerializable(metaclass=ABCMeta):
+class NpzSerializable:
     '''
     A mixin which allows class instances to be saved as NPZ files.
     Subclasses are expected to be dataclasses with slots, with only
