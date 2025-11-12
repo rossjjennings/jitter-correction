@@ -29,6 +29,7 @@ def toa_score(
     model: PrincipalComponentModel,
     coeffs: np.ndarray,
     profile: np.ndarray,
+    n_pcs: int | np.integer | None = None,
     dt: float | np.floating = 1.,
     tol: float | np.floating = np.sqrt(eps),
 ) -> ToaScoreResult:
@@ -38,17 +39,21 @@ def toa_score(
 
     `model`:  The principal components model, including template and PCs.
     `coeffs`: Coefficients of principal component dot products to use in correction.
+    `n_pcs`:  Number of principal components to use. If unspecified, will use all.
     `dt`:     The width of each phase bin in the profile. Sets the units of the TOA.
     `tol`:    Relative tolerance for optimization (in bins).
     '''
     n = len(profile)
-    k = len(pcs)
+    if n_pcs is not None:
+        pcs = model.pcs[:n_pcs]
+    else:
+        pcs = model.pcs
 
-    result = toa_fourier(template, profile, dt=dt, tol=tol)
+    result = toa_fourier(model.template, profile, dt=dt, tol=tol)
     initial_toa = result.toa
     ampl = result.ampl
 
-    template_shifted = fft_roll(template, initial_toa/dt)
+    template_shifted = fft_roll(model.template, initial_toa/dt)
     pcs_shifted = fft_roll(pcs, initial_toa/dt)
     scores = np.dot(pcs_shifted, profile)
     correcter = np.dot(coeffs, scores)
@@ -60,6 +65,7 @@ def get_toas_score(
     model: PrincipalComponentModel,
     coeffs: np.ndarray,
     data: ProfileData,
+    n_pcs: int | np.integer | None = None,
     dt: float | np.floating = 1.,
     tol: float | np.floating = np.sqrt(eps),
 ) -> ToaScoreResults:
@@ -69,12 +75,12 @@ def get_toas_score(
     `model`:  The principal components model, including template and PCs.
     `coeffs`: Coefficients of principal component dot products to use in correction.
     `data`:   Profile data from which to compute TOAs.
+    `n_pcs`:  Number of principal components to use. If unspecified, will use all.
     `dt`:     The width of each phase bin in the profile. Sets the units of the TOA.
     `tol`:    Relative tolerance for optimization (in bins).
     '''
-    n_pcs = len(model.pcs)
     results = [
-        toa_score(model, coeffs, profile, dt, tol)
+        toa_score(model, coeffs, profile, n_pcs, dt, tol)
         for profile in data.profiles
     ]
     records = np.rec.fromrecords(

@@ -1,6 +1,12 @@
 import numpy as np
+from typing import NamedTuple
+from dataclasses import dataclass
 
 from .profile_data import ProfileData
+from .toas import get_toas
+from .mixins import NpzSerializable, Hdf5Serializable, RecordContainer
+
+eps=np.finfo(np.float64).eps
 
 def skewness_function(profile: np.ndarray) -> np.ndarray:
     '''
@@ -52,3 +58,49 @@ def calc_skewness_coeffs(data: ProfileData) -> np.ndarray:
     ])
 
     return skewness_coeffs
+
+class ToaSkewnessResult(NamedTuple):
+    toa: float | np.floating
+    ampl: float | np.floating
+    skewness_coeff: float | np.floating
+
+@dataclass(slots=True)
+class ToaSkewnessResults(
+    NpzSerializable,
+    Hdf5Serializable,
+    RecordContainer[ToaSkewnessResult],
+):
+    pass
+
+def get_toas_skewness(
+    template: np.ndarray,
+    predictor_coeffs: np.ndarray,
+    data: ProfileData,
+    dt: float | np.floating = 1.,
+    tol: float | np.floating = np.sqrt(eps),
+) -> ToaSkewnessResults:
+    '''
+    Calculate a corrected TOA using the skewness model.
+
+    Inputs
+    ------
+    `template`: The profile model to use for fitting
+    `predictor_coeffs`: Coefficients of the skewness to use in correction
+    `data`:   Profiles for which to calculate TOAs, as a `ProfileData` object
+    `dt`:     The width of each phase bin in the profile. Sets the units of the TOA.
+    `tol`:    Relative tolerance for optimization (in bins).
+    '''
+    initial_results = get_toas(template, data)
+    skewness_coeffs = calc_skewness_coeffs(data)
+    toa_corrections = np.polyval(predictor_coeffs, skewness_coeffs)
+    toas_skewness = initial_results.toa - toa_corrections
+
+    records = np.rec.fromarrays(
+        [
+            toas_skewness,
+            initial_results.ampl,
+            skewness_coeffs,
+        ],
+        names=ToaSkewnessResult._fields,
+    )
+    return records

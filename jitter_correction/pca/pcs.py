@@ -19,30 +19,21 @@ class PrincipalComponentModel(NpzSerializable, Hdf5Serializable):
     '''
     A model derived using principal component analysis.
     Includes the template, principal components, and eigenvalues.
+
+    Data attributes
+    ---------------
+    phase:    Array of pulse phase values with shape `(n,)`, where `n` is the
+              number of phase bins. Can be used as an x-axis for plotting.
+    template: The best-fit model profile shape, as an array with shape `(n,)`.
+    pcs:      Principal components, as an array with shape `(k, n)`, where
+              `k` is the number of principal components.
+    eigvals:  Eigenvalues corresponding to each principal component, as an
+              array with shape `(k,)`.
     '''
     phase: np.ndarray
     template: np.ndarray
     pcs: np.ndarray
     eigvals: np.ndarray
-
-@dataclass(slots=True)
-class PrincipalComponentResults(Hdf5Serializable):
-    '''
-    Results of performing principal component analysis on a set of profiles.
-    Includes the scores (i.e., principal component values) and TOA errors (dtoas)
-    as well as the PrincipalComponentModel.
-    '''
-    model: PrincipalComponentModel
-    scores: np.ndarray
-    dtoas: np.ndarray
-
-    def __iter__(self):
-        '''
-        Allow tuple-like unpacking
-        '''
-        yield self.model
-        yield self.scores
-        yield self.dtoas
 
 def extract_pcs(
         data: ProfileData,
@@ -50,7 +41,7 @@ def extract_pcs(
         initial_template: np.ndarray | None = None,
         return_all: bool | np.bool_ = False,
         use_trend: bool | np.bool_ = True,
-    ) -> PrincipalComponentModel:
+    ) -> tuple[PrincipalComponentModel, np.ndarray, np.ndarray]:
     '''
     Extract a template and principal components from a set of profiles.
     An initial template can be supplied; if not, the default strategy is to average
@@ -68,9 +59,13 @@ def extract_pcs(
 
     Outputs
     -------
-    results:    PrincipalComponentResults object, conaining scores and ΔTOAs
-                as well as a PrincipalComponentModel object with the template,
-                principal components, and eigenvalues.
+    model:      PrincipalComponentModel object containing the template,
+                principal components, and eigenvalues extracted from the data.
+    scores:     Scores for each profile and each principal component.
+                Shape is `(k, n)`, where `k` is the number of principal
+                components and `n` is the number of profiles.
+    dtoas:      Differences between the estimated TOAs and the best-fit
+                polynomial trend.
     '''
     if initial_template is None:
         initial_template = get_template(data, n_iter=0)
@@ -121,7 +116,7 @@ def extract_pcs(
 
     eigvals = s**2/data.n_profiles
     model = PrincipalComponentModel(data.phase, template, pcs, eigvals)
-    return PrincipalComponentResults(model, scores, dtoas)
+    return model, scores, dtoas
 
 def plot_pcs(
         model: PrincipalComponentModel,
