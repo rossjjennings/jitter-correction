@@ -2,13 +2,13 @@ import numpy as np
 import h5py
 import typing
 from typing import Iterator, Self, TypeVar, Generic
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 class Hdf5Serializable:
     '''
     A mixin which allows class instances to be saved as HDF5 files.
-    Subclasses are expected to be dataclasses with slots, with instance
-    variables which are ArrayLike or themselves Hdf5Serializable.
+    Subclasses are expected to be dataclasses containing only instance
+    variables which are array-like or themselves Hdf5Serializable.
     '''
     __slots__ = ()
 
@@ -16,14 +16,14 @@ class Hdf5Serializable:
         '''
         Save the data from this class instance to an HDF5 group.
         '''
-        for slot in self.__slots__:
-            item = getattr(self, slot)
+        for field in fields(self):
+            item = getattr(self, field.name)
             if isinstance(item, Hdf5Serializable):
-                subgrp = grp.create_group(slot)
+                subgrp = grp.create_group(field.name)
                 item.save_group(subgrp)
             else:
                 # assume item is an ndarray or numpy scalar
-                grp.create_dataset(slot, data=item)
+                grp.create_dataset(field.name, data=item)
 
     def save_hdf5(self, filename: str):
         '''
@@ -37,20 +37,20 @@ class Hdf5Serializable:
         '''
         Load data from an HDF5 group and return an instance of this class.
         '''
-        slots_dict = {}
+        fields_dict = {}
         type_hints = typing.get_type_hints(cls)
-        for slot in cls.__slots__:
+        for field in fields(cls):
             try:
-                recursive = issubclass(type_hints[slot], Hdf5Serializable)
+                recurse = issubclass(type_hints[field.name], Hdf5Serializable)
             except TypeError:
-                recursive = False
-            if recursive:
-                item = type_hints[slot].from_group(grp[slot])
-                slots_dict[slot] = item
+                recurse = False
+            if recurse:
+                item = type_hints[field.name].from_group(grp[field.name])
+                fields_dict[field.name] = item
             else:
                 # assume item is an ndarray or numpy scalar
-                slots_dict[slot] = np.asarray(grp[slot])[()]
-        return cls(**slots_dict)
+                fields_dict[field.name] = np.asarray(grp[field.name])[()]
+        return cls(**fields_dict)
 
     @classmethod
     def from_hdf5(cls, filename: str):
@@ -61,8 +61,8 @@ class Hdf5Serializable:
 class NpzSerializable:
     '''
     A mixin which allows class instances to be saved as NPZ files.
-    Subclasses are expected to be dataclasses with slots, with only
-    ArrayLike instance variables.
+    Subclasses are expected to be dataclasses with only array-like
+    instance variables.
     '''
     __slots__ = ()
 
@@ -70,8 +70,11 @@ class NpzSerializable:
         '''
         Save the data from this class instance to an npz file.
         '''
-        slots_dict = {slot: getattr(self, slot) for slot in self.__slots__}
-        np.savez(filename, **slots_dict)
+        fields_dict = {
+            field.name: getattr(self, field.name)
+            for field in fields(self)
+        }
+        np.savez(filename, **fields_dict)
 
     @classmethod
     def from_npz(cls, filename: str):
@@ -97,7 +100,7 @@ class RecordContainer(Generic[T]):
         '''
         Construct a mixin class representing a container for a record type
         '''
-        @dataclass
+        @dataclass(slots=True)
         class RecordContainerAlias:
             '''
             A mixin representing a container for a specific record type
