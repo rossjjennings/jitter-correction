@@ -91,7 +91,7 @@ class RecordContainer(type):
     giving the subclass an attribute `record_type` which stores the associated
     record type.
     '''
-    def __new__(mcls, name, bases, namespace):
+    def __init__(self, name, bases, namespace):
         try:
             record_type = namespace['record_type']
         except KeyError:
@@ -99,10 +99,12 @@ class RecordContainer(type):
 
         def __init__(self, data: np.ndarray):
             self.data = np.rec.array(data)
+        self.__init__ = __init__
 
         def __iter__(self) -> Iterator[record_type]:
             for rec in self.data:
                 yield record_type(*rec)
+        self.__iter__ = __iter__
 
         def __getitem__(self, key) -> record_type | Self:
             item = self.data[key]
@@ -110,15 +112,8 @@ class RecordContainer(type):
                 return record_type(*item)
             else:
                 return type(self)(item)
+        self.__getitem__ = __getitem__
 
         def __getattr__(self, attr):
             return getattr(self.data, attr)
-
-        namespace.update({
-            '__init__': __init__,
-            '__iter__': __iter__,
-            '__getitem__': __getitem__,
-            '__getattr__': __getattr__,
-        })
-
-        return super().__new__(mcls, name, bases, namespace)
+        self.__getattr__ = __getattr__
