@@ -48,12 +48,11 @@ class ToaResult(NamedTuple):
     ampl: float | np.floating
 
 @dataclass(slots=True)
-class ToaResults(NpzSerializable, Hdf5Serializable, metaclass=RecordContainer):
+class ToaResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
-    data: np.recarray
-    record_type = ToaResult
+    pass
 
 def toa_ws(
     template: np.ndarray,

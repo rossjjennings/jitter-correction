@@ -19,12 +19,11 @@ class ToaScoreResult(NamedTuple):
     scores: np.ndarray
 
 @dataclass(slots=True)
-class ToaScoreResults(NpzSerializable, Hdf5Serializable, metaclass=RecordContainer):
+class ToaScoreResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaScoreResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
-    data: np.recarray
-    record_type = ToaScoreResult
+    pass
 
 def toa_score(
     model: PrincipalComponentModel,

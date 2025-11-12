@@ -25,12 +25,11 @@ class ToaGtmResult(NamedTuple):
     scores: np.ndarray
 
 @dataclass(slots=True)
-class ToaGtmResults(NpzSerializable, Hdf5Serializable, metaclass=RecordContainer):
+class ToaGtmResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaGtmResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
-    data: np.recarray
-    record_type = ToaGtmResult
+    pass
 
 def toa_gtm(
     model: PrincipalComponentModel,

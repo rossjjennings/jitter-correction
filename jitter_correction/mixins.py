@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 import typing
-from typing import Iterator, Self
+from typing import Iterator, Self, TypeVar, Generic
 from dataclasses import dataclass
 
 class Hdf5Serializable:
@@ -81,39 +81,57 @@ class NpzSerializable:
         npz = np.load(filename)
         return cls(**npz)
 
-class RecordContainer(type):
+T = TypeVar("T")
+
+class RecordContainer(Generic[T]):
     '''
     Given a record type (class inheriting from NamedTuple), allows creating
     a container type which internally stores records of the given type in a
     record array, and allows iterating, slicing, and accessing fields by name.
 
-    Creating the container type is done by subclassing `RecordContainer` and
-    giving the subclass an attribute `record_type` which stores the associated
-    record type.
+    Creating the container type is done by indexing `RecordContainer` with
+    the corresponding record type and subclassing the resulting mixin class
+    (e.g., `RecordContainer[MyTuple]`).
     '''
-    def __init__(self, name, bases, namespace):
-        try:
-            record_type = namespace['record_type']
-        except KeyError:
-            raise TypeError("RecordContainer must have a record type")
+    def __class_getitem__(self, record_type: type) -> type:
+        '''
+        Construct a mixin class representing a container for a record type
+        '''
+        @dataclass
+        class RecordContainerAlias:
+            '''
+            A mixin representing a container for a specific record type
+            '''
+            data: np.recarray
 
-        def __init__(self, data: np.ndarray):
-            self.data = np.rec.array(data)
-        self.__init__ = __init__
+            def __init__(self, data: np.ndarray) -> None:
+                '''
+                Transform the input data into a record array
+                '''
+                self.data = np.rec.array(data)
 
-        def __iter__(self) -> Iterator[record_type]:
-            for rec in self.data:
-                yield record_type(*rec)
-        self.__iter__ = __iter__
+            def __iter__(self) -> Iterator[record_type]:
+                '''
+                Iterate over the records stored in this container
+                '''
+                for rec in self.data:
+                    yield record_type(*rec)
 
-        def __getitem__(self, key) -> record_type | Self:
-            item = self.data[key]
-            if item.shape == ():
-                return record_type(*item)
-            else:
-                return type(self)(item)
-        self.__getitem__ = __getitem__
+            @classmethod
+            def __getitem__(self, key) -> record_type | Self:
+                '''
+                Allow slicing the array to return new container objects
+                '''
+                item = self.data[key]
+                if item.shape == ():
+                    return record_type(*item)
+                else:
+                    return cls(item)
 
-        def __getattr__(self, attr):
-            return getattr(self.data, attr)
-        self.__getattr__ = __getattr__
+            def __getattr__(self, attr):
+                '''
+                Get fields as individual arrays
+                '''
+                return getattr(self.data, attr)
+
+        return RecordContainerAlias
