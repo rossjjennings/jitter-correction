@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from loguru import logger
 from typing import Any
 
@@ -97,32 +97,7 @@ class ProfileModel:
     snr: float | np.floating # signal-to-noise ratio (determines noise level)
     ampl_dist: str # amplitude distribution ('gamma' or 'lognorm')
     drift_bins: float | np.floating # phase drift from beginning to end, in bins
-    rfi: list[RFI] # RFI to add
-
-    def __init__(
-        self,
-        spec: PulseSpec,
-        n_profiles: int | np.integer,
-        npprof: int | np.integer,
-        n_bins: int | np.integer,
-        snr: float | np.floating,
-        ampl_dist: str = 'gamma',
-        drift_bins: float | np.floating = 0.,
-        rfi: list[RFI] | None = None,
-    ):
-        '''
-        Allow leaving out the RFI list
-        '''
-        if rfi is None:
-            rfi = []
-        self.spec = spec
-        self.n_profiles = n_profiles
-        self.npprof = npprof
-        self.n_bins = n_bins
-        self.snr = snr
-        self.ampl_dist = ampl_dist
-        self.drift_bins = drift_bins
-        self.rfi = rfi
+    rfi: list[RFI] = field(default_factory=list) # RFI to add
 
     @property
     def phase(self) -> np.ndarray:
