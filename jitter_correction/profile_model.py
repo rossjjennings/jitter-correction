@@ -7,6 +7,7 @@ from typing import Any
 from .pulse_spec import PulseSpec
 from .profile_data import ProfileData, gen_profiles
 from .signal import fft_roll
+from .mixins import Hdf5Serializable
 
 DM_CONST = 1/2.41e-4 # MHz**2 s cm**3 pc**-1
 
@@ -23,7 +24,7 @@ class RFI(metaclass=ABCMeta):
         pass
 
 @dataclass(slots=True)
-class RippleRFI(RFI):
+class RippleRFI(RFI, Hdf5Serializable):
     freq: float | np.floating # ripple cycles / pulse period
     amplitude: float | np.floating # rel. pulse peak
 
@@ -32,7 +33,7 @@ class RippleRFI(RFI):
         return self.amplitude*np.cos(2*np.pi*ripple_phase)
 
 @dataclass(slots=True)
-class ImpulsiveRFI(RFI):
+class ImpulsiveRFI(RFI, Hdf5Serializable):
     amplitude: float | np.floating # rel. pulse peak
     duration: float | np.floating # in units of pulse period
     center_freq: float | np.floating # in MHz
@@ -86,7 +87,7 @@ class ImpulsiveRFI(RFI):
         return rfi
 
 @dataclass(slots=True)
-class ProfileModel:
+class ProfileModel(Hdf5Serializable):
     '''
     Encodes configuration needed to generate pulse profiles.
     '''
