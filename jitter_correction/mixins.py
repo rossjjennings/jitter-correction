@@ -1,8 +1,62 @@
 import numpy as np
 import h5py
 import typing
-from typing import Iterator, Self, TypeVar, Generic
+from typing import Iterator, Self, TypeVar, Generic, Any
 from dataclasses import dataclass, fields
+from collections.abc import Mapping
+
+def hdf5_save_item(key: str, item: Any, grp: h5py.Group):
+    '''
+    Save an item named `key`, which may be an Hdf5Serializable
+    value, a mapping, an array-like object, or a numpy scalar,
+    to the specified HDF5 Group.
+    '''
+    if isinstance(item, Hdf5Serializable):
+        subgrp = grp.create_group(key)
+        item.save_group(subgrp)
+    elif isinstance(item, Mapping):
+        subgrp = grp.create_group(key)
+        for subkey, subitem in item.items():
+            hdf5_save_item(subkey, subitem, subgrp)
+    elif isinstance(item, list):
+        subgrp = grp.create_group(key)
+        for i, subitem in enumerate(item):
+            hdf5_save_item(str(i), subitem, subgrp)
+    else:
+        # assume item is an ndarray or numpy scalar
+        grp.create_dataset(key, data=item)
+
+def hdf5_load_item(key: str, hint_type: Any, grp: h5py.Group):
+    '''
+    Load an item named `key`, which may be an Hdf5Serializable
+    value, a mapping, an array-like object, or a numpy scalar,
+    from the specified HDF5 Group, using type hints as a guide.
+    '''
+    try:
+        is_serializable = issubclass(hint_type, Hdf5Serializable)
+    except TypeError:
+        is_serializable = False
+    if is_serializable:
+        return hint_type.from_group(grp[key])
+    elif (hasattr(hint_type, '__origin__')
+          and issubclass(hint_type.__origin__, Mapping)):
+        mapping = hint_type.__origin__()
+        key_type, value_type = hint_type.__args__
+        for subkey in grp[key]:
+            mapping[subkey] = hdf5_load_item(subkey, value_type, grp[key])
+        return mapping
+    elif (hasattr(hint_type, '__origin__')
+          and issubclass(hint_type.__origin__, list)):
+        sequence = hint_type.__origin__()
+        value_type, = hint_type.__args__
+        i = 0
+        while (subkey := str(i)) in grp[key]:
+            sequence.append(hdf5_load_item(subkey, value_type, grp[key]))
+            i += 1
+        return sequence
+    else:
+        # assume item is an ndarray or numpy scalar
+        return np.asarray(grp[key])[()]
 
 @dataclass(slots=True)
 class Hdf5Serializable:
@@ -17,12 +71,7 @@ class Hdf5Serializable:
         '''
         for field in fields(self):
             item = getattr(self, field.name)
-            if isinstance(item, Hdf5Serializable):
-                subgrp = grp.create_group(field.name)
-                item.save_group(subgrp)
-            else:
-                # assume item is an ndarray or numpy scalar
-                grp.create_dataset(field.name, data=item)
+            hdf5_save_item(field.name, item, grp)
 
     def save_hdf5(self, filename: str):
         '''
@@ -39,16 +88,11 @@ class Hdf5Serializable:
         fields_dict = {}
         type_hints = typing.get_type_hints(cls)
         for field in fields(cls):
-            try:
-                recurse = issubclass(type_hints[field.name], Hdf5Serializable)
-            except TypeError:
-                recurse = False
-            if recurse:
-                item = type_hints[field.name].from_group(grp[field.name])
-                fields_dict[field.name] = item
-            else:
-                # assume item is an ndarray or numpy scalar
-                fields_dict[field.name] = np.asarray(grp[field.name])[()]
+            fields_dict[field.name] = hdf5_load_item(
+                field.name,
+                type_hints[field.name],
+                grp,
+            )
         return cls(**fields_dict)
 
     @classmethod
