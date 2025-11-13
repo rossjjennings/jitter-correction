@@ -39,7 +39,7 @@ class ProfileData(NpzSerializable, Hdf5Serializable):
         '''
         if ax is None:
             ax = plt.gca()
-        pc = plt.pcolormesh(self.phase, self.profile_num, self.profiles)
+        pc = plt.pcolormesh(self.phase, self.profile_number, self.profiles)
         ax.set_xlabel("Phase (cycles)")
         ax.set_ylabel("Profile number")
         return pc
@@ -287,16 +287,21 @@ def gen_pseudo_profiles(
         fj_profile.append(c.fj*averaging_factor/smearing_factor)
         modindex_profile.append(c.modindex/np.sqrt(npprof))
 
-    profile_spec = PulseSpec(spec.amplitudes, spec.locs,
-                             widths_profile, fj_profile, modindex_profile)
-    data = gen_pulses(phase, n_profiles, snr, profile_spec)
+    profile_spec = PulseSpec.new(
+        spec.data.amplitude,
+        spec.data.loc,
+        widths_profile,
+        fj_profile,
+        modindex_profile
+    )
+    data = gen_pulses(spec, phase, n_profiles, snr)
     return data
 
 def shift_template(
     spec: PulseSpec,
     phase: np.ndarray,
-    shifts: int | np.integer,
-    snr: float | np.floating = np.inf,
+    shifts: float | np.floating | np.ndarray,
+    snr: float | np.floating | np.ndarray = np.inf,
 ) -> ProfileData:
     '''
     Generate synthetic profiles by shifting a template.
@@ -322,6 +327,7 @@ def shift_template(
         loc = c.loc + shifts[..., np.newaxis]
         profiles += c.amplitude*np.exp(-(phase-loc)**2/(2*c.width**2))
 
+    snr = np.atleast_1d(snr)
     if np.any(snr != np.inf):
         if np.ndim(snr) != 0:
             snr = snr[..., np.newaxis]

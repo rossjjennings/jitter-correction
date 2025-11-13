@@ -4,14 +4,13 @@ import typing
 from typing import Iterator, Self, TypeVar, Generic
 from dataclasses import dataclass, fields
 
+@dataclass(slots=True)
 class Hdf5Serializable:
     '''
     A mixin which allows class instances to be saved as HDF5 files.
     Subclasses are expected to be dataclasses containing only instance
     variables which are array-like or themselves Hdf5Serializable.
     '''
-    __slots__ = ()
-
     def save_group(self, grp: h5py.Group):
         '''
         Save the data from this class instance to an HDF5 group.
@@ -58,14 +57,13 @@ class Hdf5Serializable:
             instance = cls.from_group(f)
         return instance
 
+@dataclass(slots=True)
 class NpzSerializable:
     '''
     A mixin which allows class instances to be saved as NPZ files.
     Subclasses are expected to be dataclasses with only array-like
     instance variables.
     '''
-    __slots__ = ()
-
     def save_npz(self, filename: str):
         '''
         Save the data from this class instance to an npz file.

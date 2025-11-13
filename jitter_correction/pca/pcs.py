@@ -39,7 +39,7 @@ def extract_pcs(
         data: ProfileData,
         n_pcs: int | np.integer,
         initial_template: np.ndarray | None = None,
-        return_all: bool | np.bool_ = False,
+        return_all: bool = False,
         use_trend: bool | np.bool_ = True,
     ) -> tuple[PrincipalComponentModel, np.ndarray, np.ndarray]:
     '''

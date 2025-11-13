@@ -77,8 +77,12 @@ def toa_gtm(
         return sq_ccf
 
     brack = (ccf_max - dt, ccf_max, ccf_max + dt)
-    toa = minimize_scalar(lambda tau: -modified_squared_ccf(tau),
-                          method = 'Brent', bracket = brack, tol = tol*dt).x
+    toa = minimize_scalar( # type: ignore # TODO
+        lambda tau: -modified_squared_ccf(tau),
+        method = 'Brent',
+        bracket = brack,
+        tol = tol*dt
+    ).x
 
     assert brack[0] < toa < brack[-1]
 
@@ -95,6 +99,7 @@ def toa_gtm_prior(
     model: PrincipalComponentModel,
     weights: np.ndarray,
     profile: np.ndarray,
+    dt: float | np.floating = 1.,
     tol: float | np.floating = np.sqrt(eps),
 ) -> ToaGtmResult:
     '''
@@ -138,8 +143,12 @@ def toa_gtm_prior(
         return sq_ccf
 
     brack = (ccf_max - dt, ccf_max, ccf_max + dt)
-    toa = minimize_scalar(lambda tau: -modified_squared_ccf(tau),
-                          method = 'Brent', bracket = brack, tol = tol*dt).x
+    toa = minimize_scalar( # type: ignore # TODO
+        lambda tau: -modified_squared_ccf(tau),
+        method = 'Brent',
+        bracket = brack,
+        tol = tol*dt
+    ).x
 
     assert brack[0] < toa < brack[-1]
 

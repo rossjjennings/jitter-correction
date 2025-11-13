@@ -98,7 +98,7 @@ class PulseSpec(NpzSerializable, Hdf5Serializable):
             else:
                 raise ValueError("either `width` or `fwhm` must be specified")
 
-        data = np.rec.fromarrays(
+        data = np.rec.fromarrays( # type: ignore # TODO
             [amplitude, loc, width, fj, modindex],
             names=['amplitude', 'loc', 'width', 'fj', 'modindex'],
         )
@@ -140,10 +140,10 @@ class PulseSpec(NpzSerializable, Hdf5Serializable):
 
         single_pulse_ampl = np.array(amplitude)*np.sqrt(1+np.array(fj)**2)
         single_pulse_width = np.array(width)/np.sqrt(1+np.array(fj)**2)
-        return cls(
+        return cls.new(
             amplitude=single_pulse_ampl,
-            locs=loc,
-            widths=single_pulse_width,
+            loc=loc,
+            width=single_pulse_width,
             fj=fj,
             modindex=modindex,
         )

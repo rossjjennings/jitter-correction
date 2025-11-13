@@ -26,3 +26,15 @@ jc-extract-pcs = "jitter_correction.scripts.extract_pcs:main"
 jc-template-stats = "jitter_correction.scripts.template_stats:main"
 jc-pca-timing = "jitter_correction.scripts.pca_timing:main"
 jc-pca-score-timing = "jitter_correction.scripts.pca_score_timing:main"
+
+[[tool.mypy.overrides]]
+module = ["numba.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pywt.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["h5py.*"]
+ignore_missing_imports = true

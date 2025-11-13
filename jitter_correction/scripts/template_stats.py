@@ -12,7 +12,7 @@ if hasattr(np, "trapezoid"):
     # np.trapz was renamed to np.trapezoid in Numpy 2.0
     trapz = np.trapezoid
 else:
-    trapz = np.trapz
+    trapz = np.trapz # type: ignore
 
 def main():
     import argparse

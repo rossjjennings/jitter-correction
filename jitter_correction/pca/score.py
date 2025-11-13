@@ -30,7 +30,7 @@ def toa_score(
     coeffs: np.ndarray,
     profile: np.ndarray,
     n_pcs: int | np.integer | None = None,
-    dt: float | np.floating = 1.,
+    dt: float = 1.,
     tol: float | np.floating = np.sqrt(eps),
 ) -> ToaScoreResult:
     '''

@@ -15,7 +15,7 @@ class RFI(metaclass=ABCMeta):
     Abstract base class for all RFI sources
     '''
     @abstractmethod
-    def realize(phase: np.ndarray) -> np.ndarray:
+    def realize(self, phase: np.ndarray) -> np.ndarray:
         '''
         Return a realization of the RFI source.
         Should have the same shape as `phase`.
@@ -27,7 +27,7 @@ class RippleRFI(RFI):
     freq: float | np.floating # ripple cycles / pulse period
     amplitude: float | np.floating # rel. pulse peak
 
-    def realize(phase: np.ndarray) -> np.ndarray:
+    def realize(self, phase: np.ndarray) -> np.ndarray:
         ripple_phase = self.freq*phase - np.random.random()
         return self.amplitude*np.cos(2*np.pi*ripple_phase)
 
@@ -39,45 +39,51 @@ class ImpulsiveRFI(RFI):
     bandwidth: float | np.floating # in MHz
     rate: float | np.floating # in MHz
 
-    def realize(phase: np.ndarray) -> np.ndarray:
-        min_lag = DM_CONST*dm/(self.center_freq + self.bandwidth/2)**2
-        max_lag = DM_CONST*dm/(self.center_freq + self.bandwidth/2)**2
-        dt = (phase[-1] - phase[-2])*period
-        length = period + max_lag - min_lag + rfi_dur - dt
+    dm: float | np.floating # in pc/cm**3
+    period: float | np.floating # in s
+
+    def realize(self, phase: np.ndarray) -> np.ndarray:
+        min_lag = DM_CONST*self.dm/(self.center_freq + self.bandwidth/2)**2
+        max_lag = DM_CONST*self.dm/(self.center_freq + self.bandwidth/2)**2
+        dt = (phase[-1] - phase[-2])*self.period
+        length = self.period + max_lag - min_lag + self.duration - dt
         logger.debug(f'Length is {length}')
         logger.debug(f'Max lag is {max_lag}')
         logger.debug(f'Min lag is {min_lag}')
-        logger.debug(f'RFI duration is {rfi_dur}')
+        logger.debug(f'RFI duration is {self.duration}')
 
         rfi = np.zeros_like(phase)
-        n_rfi = np.random.poisson(rfi_rate*length/period)
-        logger.debug(f'Profile {i} has {n_rfi} RFI instances')
+        n_rfi = np.random.poisson(self.rate*length/self.period)
+        logger.debug(f'Profile has {n_rfi} RFI instances')
         for j in range(n_rfi):
             t1 = np.random.random()*length + min_lag
-            t0 = t1 - rfi_dur
+            t0 = t1 - self.duration
             logger.debug(f'  RFI {j} has t0={t0}, t1={t1}')
-            time = (phase + 0.5)*period
+            time = (phase + 0.5)*self.period
             first_bin = np.min(np.where(time > t0 - max_lag))
             last_bin = np.max(np.where(time <= t1 - min_lag))
             time_slice = time[first_bin:last_bin+1]
-            logger.debug(f'  Freq: {rfi_freq} MHz')
-            if dm == 0:
-                top = rfi_freq + rfi_bw/2
+            logger.debug(f'  Freq: {self.center_freq} MHz')
+            if self.dm == 0:
+                top = self.center_freq + self.bandwidth/2
             else:
-                denom = ((t0 - time_slice < 0)*(dm_constant*dm)
-                            /(rfi_freq + rfi_bw/2)**2
+                denom = ((t0 - time_slice < 0)*(DM_CONST*self.dm)
+                            /(self.center_freq + self.bandwidth/2)**2
                         + (t0 - time_slice > 0)*(t0 - time_slice))
                 top = np.minimum(
-                    np.sqrt(dm_constant*dm/denom),
-                    rfi_freq + rfi_bw/2,
+                    np.sqrt(DM_CONST*self.dm/denom),
+                    self.center_freq + self.bandwidth/2,
                 )
             bottom = np.maximum(
-                np.sqrt(dm_constant*dm/(t1 - time_slice)),
-                rfi_freq - rfi_bw/2,
+                np.sqrt(DM_CONST*self.dm/(t1 - time_slice)),
+                self.center_freq - self.bandwidth/2,
             )
             logger.debug(f'  Top: {top} MHz')
             logger.debug(f'  Bottom: {bottom} MHz')
-            rfi[first_bin:last_bin+1] += rfi_ampl*(top - bottom)/rfi_bw
+            rfi[first_bin:last_bin+1] += (
+                self.amplitude*(top - bottom)/self.bandwidth
+            )
+        return rfi
 
 @dataclass(slots=True)
 class ProfileModel:
@@ -150,7 +156,7 @@ class ProfileModel:
 
         for source in self.rfi:
             for i in range(len(profiles)):
-                profiles[i] += source.realize()
+                profiles[i] += source.realize(self.phase)
 
         return ProfileData(self.phase, profiles)
 

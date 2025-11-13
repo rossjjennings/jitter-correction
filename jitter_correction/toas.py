@@ -2,7 +2,7 @@ import numpy as np
 from numpy import pi, sin, cos, exp, log, sqrt
 from numpy.fft import fft, ifft, fftfreq, rfft, irfft, rfftfreq
 from numpy.random import randn
-from typing import NamedTuple, Iterator, Self
+from typing import NamedTuple, Iterator, Self, Any
 from scipy.optimize import minimize_scalar
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -17,7 +17,7 @@ if hasattr(np, "trapezoid"):
     # np.trapz was renamed to np.trapezoid in Numpy 2.0
     trapz = np.trapezoid
 else:
-    trapz = np.trapz
+    trapz = np.trapz # type: ignore
 
 def offpulse_window(profile: np.ndarray, size: int | np.integer) -> np.ndarray:
     '''
@@ -57,7 +57,7 @@ class ToaResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaResult]):
 def toa_ws(
     template: np.ndarray,
     profile: np.ndarray,
-    dt: float | np.floating = 1.,
+    dt: float = 1., # typing on np.trapezoid doesn't like np.floating here
     noise_level: float | np.floating | None = None,
     tol: float | np.floating = sqrt(eps),
 ) -> ToaResult:
@@ -80,8 +80,12 @@ def toa_ws(
 
     interpolant = interp_ws(ccf, lags)
     brack = (ccf_max - dt, ccf_max, ccf_max + dt)
-    toa = minimize_scalar(lambda t: -interpolant(t),
-                          method = 'Brent', bracket = brack, tol = tol).x
+    toa = minimize_scalar( # type: ignore # TODO
+        lambda t: -interpolant(t),
+        method = 'Brent',
+        bracket = brack,
+        tol = tol
+    ).x
     
     assert brack[0] < toa < brack[-1]
 
@@ -101,7 +105,7 @@ def toa_ws(
 def toa_fourier(
     template: np.ndarray,
     profile: np.ndarray,
-    dt: float | np.floating = 1.,
+    dt: float = 1., # typing on np.trapezoid doesn't like np.floating here
     noise_level: float | np.floating | None = None,
     tol: float | np.floating = sqrt(eps),
 ) -> ToaResult:
@@ -134,8 +138,12 @@ def toa_fourier(
         return ccf.real
 
     brack = (ccf_max - dt, ccf_max, ccf_max + dt)
-    toa = minimize_scalar(lambda tau: -ccf_fourier(tau),
-                          method = 'Brent', bracket = brack, tol = tol*dt).x
+    toa = minimize_scalar( # type: ignore # TODO
+        lambda tau: -ccf_fourier(tau),
+        method = 'Brent',
+        bracket = brack,
+        tol = tol*dt
+    ).x
 
     assert brack[0] < toa < brack[-1]
 
@@ -175,8 +183,8 @@ def test_toa_recovery(
                 Sets the units of the TOA.
     `tol`:      Relative tolerance for optimization.
     '''
-    dtoas = []
-    toa_errs = []
+    dtoas: Any = []
+    toa_errs: Any = []
     for i in range(n):
         true_toa = rms_toa*randn()
         profile = fft_roll(template, true_toa/dt)
@@ -216,5 +224,5 @@ def get_toas(
         func(template, profile, dt, noise_level, tol)
         for profile in data.profiles
     ]
-    records = np.rec.fromrecords(results, names=ToaResult._fields)
+    records = np.rec.fromrecords(results, names=ToaResult._fields) # type: ignore # TODO
     return ToaResults(records)

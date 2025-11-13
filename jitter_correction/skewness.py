@@ -95,7 +95,7 @@ def get_toas_skewness(
     toa_corrections = np.polyval(predictor_coeffs, skewness_coeffs)
     toas_skewness = initial_results.toa - toa_corrections
 
-    records = np.rec.fromarrays(
+    records = np.rec.fromarrays( # type: ignore # TODO
         [
             toas_skewness,
             initial_results.ampl,
