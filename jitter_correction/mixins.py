@@ -4,6 +4,7 @@ import typing
 from typing import Iterator, Self, TypeVar, Generic, Any
 from dataclasses import dataclass, fields
 from collections.abc import Mapping
+import importlib
 
 def hdf5_save_item(key: str, item: Any, grp: h5py.Group):
     '''
@@ -32,6 +33,19 @@ def hdf5_load_item(key: str, hint_type: Any, grp: h5py.Group):
     value, a mapping, an array-like object, or a numpy scalar,
     from the specified HDF5 Group, using type hints as a guide.
     '''
+    type_conflict = (
+        '_module' in grp.attrs
+        and hasattr(hint_type, '__module__')
+        and grp.attrs['_module'] != hint_type.__module__
+    )
+    type_conflict |= (
+        '_type_qualname' in grp.attrs
+        and hasattr(hint_type, '__qualname__')
+        and grp.attrs['_type_qualname'] != hint_type.__qualname__
+    )
+    if type_conflict or isinstance(hint_type, TypeVar):
+        module = importlib.import_module(grp.attrs['_module'])
+        hint_type = getattr(module, grp.attrs['_type_qualname'])
     try:
         is_serializable = issubclass(hint_type, Hdf5Serializable)
     except TypeError:
@@ -69,6 +83,8 @@ class Hdf5Serializable:
         '''
         Save the data from this class instance to an HDF5 group.
         '''
+        grp.attrs['_module'] = self.__class__.__module__
+        grp.attrs['_type_qualname'] = self.__class__.__qualname__
         for field in fields(self):
             item = getattr(self, field.name)
             hdf5_save_item(field.name, item, grp)
