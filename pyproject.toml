@@ -8,7 +8,7 @@ version = "0.2.0"
 authors = [
     {name = "Ross Jennings", email = "ross.jennings@nanograv.org"},
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14" # can support 3.14 when numba 0.63 is out
 dependencies = [
     "numpy",
     "scipy",
@@ -26,6 +26,20 @@ jc-extract-pcs = "jitter_correction.scripts.extract_pcs:main"
 jc-template-stats = "jitter_correction.scripts.template_stats:main"
 jc-pca-timing = "jitter_correction.scripts.pca_timing:main"
 jc-pca-score-timing = "jitter_correction.scripts.pca_score_timing:main"
+
+[dependency-groups]
+pixi-extra = [
+    "ipython",
+    "ipykernel<6.22",
+    "pip",
+]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.environments]
+default = {features = ["pixi-extra"]}
 
 [[tool.mypy.overrides]]
 module = ["numba.*"]
