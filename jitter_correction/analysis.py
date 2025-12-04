@@ -85,15 +85,22 @@ class TemplateOnlyAnalysis(Analysis[TemplateOnlyModel, ToaResults]):
         return TemplateOnlyModel(template)
 
     def get_toas(self, model: TemplateOnlyModel, data: ProfileData) -> ToaResults:
-        return get_toas(self, model.template, data)
+        return get_toas(model.template, data)
 
 class GtmAnalysis(Analysis[PrincipalComponentModel, ToaGtmResults]):
     def __init__(self, n_pcs: int):
-        def train(training_data: ProfileData) -> PrincipalComponentModel:
-            pca_model, scores, dtoas = extract_pcs(training_data, n_pcs=n_pcs)
-            return pca_model
-        self.train = train
-        self.get_toas = get_toas_gtm
+        self.n_pcs = n_pcs
+
+    def train(self, training_data: ProfileData) -> PrincipalComponentModel:
+        pca_model, scores, dtoas = extract_pcs(training_data, n_pcs=self.n_pcs)
+        return pca_model
+
+    def get_toas(
+        self,
+        model: PrincipalComponentModel,
+        data: ProfileData,
+    ) -> ToaGtmResults:
+        return get_toas_gtm(model, data)
 
 @dataclass
 class PcaScoreModel(Hdf5Serializable):
@@ -135,7 +142,7 @@ class SkewnessAnalysis(Analysis[SkewnessModel, ToaResults]):
         self.n_iter = n_iter
 
     def train(self, data: ProfileData) -> SkewnessModel:
-        template = get_template(data, n_iter=n_iter)
+        template = get_template(data, n_iter=self.n_iter)
         dtoas = calc_dtoas(template, data)
         skewness_coeffs = calc_skewness_coeffs(data)
         predictor_coeffs = np.polyfit(skewness_coeffs, dtoas, 1)
