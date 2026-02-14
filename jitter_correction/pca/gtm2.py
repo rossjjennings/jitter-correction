@@ -310,7 +310,7 @@ class MapEstimator:
         tau_guess = sample_argmax
         a_guess = self.ahat_gtm(tau_guess)
 
-        result = minimize_scalar(
+        result = minimize(
             lambda x: -objective_fn(*x),
             method = 'Powell',
             x0 = (a_guess, tau_guess),
@@ -321,3 +321,91 @@ class MapEstimator:
             logger.warning(result.message)
         ahat, tauhat = result.x
         return ahat, tauhat
+
+    def build_toa_result(self, profile, ahat, tauhat, sigma=None):
+        n = profile.shape[0]
+
+        # calculate best-fit values of a, b, and x_i
+        profile_fft = np.fft.rfft(profile)
+        profile_sum = profile_fft[0].real
+        phase = -2j*np.pi*np.fft.rfftfreq(n)
+
+        if sigma is None:
+            # estimate noise level from upper 1/4 of profile FFT
+            sigma2hat = np.mean(np.abs(profile_fft[-n//8-1:-1])**2)/n
+            sigmahat = np.sqrt(sigma2hat)
+            sigma = sigmahat
+
+        bhat = (profile_sum - ahat*self.template_sum)/n
+        shrinkage_factors = 1/(1 + sigma**2/(self.eigvals*a))
+
+        xhats = []
+        for pc_fft, shrinkage_factor in zip(self.pcs_fft, shrinkage_factors):
+            pccf_fft = np.conj(np.exp(phase)*pc_fft)*profile_fft
+            pccf = 2*np.real(np.trapezoid(pccf_fft))/n
+            xhats.append(shrinkage_factor*pccf/ahat)
+        xhats = np.array(xhats)
+
+        # calculate errors in tau (by finite difference), a, and b
+        h = np.finfo(np.float64).eps**(1/4)
+        obj0 = self.objective_function(profile_fft, tauhat)
+        obj1 = self.objective_function(profile_fft, tauhat - h)
+        obj2 = self.objective_function(profile_fft, tauhat + h)
+        obj_dderiv = (obj1 + obj2 - 2*obj0)/h**2
+        tau_error = sigma*np.sqrt(-2/obj_dderiv)
+        a_error = sigma/np.sqrt(self.template_sqsum - self.template_sum**2/n)
+        b_error = sigma/np.sqrt(n)
+        x_errors = sigma/ahat*shrinkage_factors
+
+        return ToaGtmResult(
+            toa=tauhat,
+            ampl=ahat,
+            offset=bhat,
+            scores=xhats,
+            sigma=sigma,
+            toa_error=tau_error,
+            ampl_error=a_error,
+            offset_error=b_error,
+            score_errors=x_errors,
+        )
+
+    def estimate_toa(
+        self,
+        profile,
+        tol=np.sqrt(np.finfo(np.float64).eps),
+        sigma=None,
+    ):
+        ahat, tauhat = self.maximize_objective_function(profile, tol, sigma)
+        result = self.build_toa_result(profile, ahat, tauhat, sigma)
+
+        return result
+
+    def estimate_toas(
+        self,
+        data,
+        tol=np.sqrt(np.finfo(np.float64).eps),
+        sigma=None,
+    ):
+        results = []
+        for profile in data.profiles:
+            ahat, tauhat = self.maximize_objective_function(profile, tol, sigma)
+            result = self.build_toa_result(profile, ahat, tauhat, sigma)
+            results.append(result)
+
+        n_pcs = self.pcs_fft.shape[0]
+        records = np.rec.fromrecords(
+            results,
+            dtype=[
+                ('toa', np.float64),
+                ('ampl', np.float64),
+                ('offset', np.float64),
+                ('scores', np.float64, (n_pcs,)),
+                ('sigma', np.float64),
+                ('toa_error', np.float64),
+                ('ampl_error', np.float64),
+                ('offset_error', np.float64),
+                ('score_errors', np.float64, (n_pcs,)),
+            ],
+        )
+
+        return ToaGtmResults(records)
