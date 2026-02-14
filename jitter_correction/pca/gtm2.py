@@ -10,12 +10,14 @@ from ..mixins import NpzSerializable, Hdf5Serializable, RecordContainer
 
 class ToaGtmResult(NamedTuple):
     toa: np.floating
-    a: np.floating
-    b: np.floating
+    ampl: np.floating
+    offset: np.floating
+    scores: np.array
     sigma: np.floating
     toa_error: np.floating
-    a_error: np.floating
-    b_error: np.floating
+    ampl_error: np.floating
+    offset_error: np.floating
+    score_errors: np.array
 
 @dataclass
 class ToaGtmResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaGtmResult]):
@@ -105,28 +107,30 @@ class GtmEstimator:
             tol = tol,
         )
         if not result.success:
-            logger.error(result.message)
-            return np.nan
+            logger.warning(result.message)
         return result.x
 
     def build_toa_result(self, profile, tauhat):
-        if np.isnan(tauhat):
-            return ToaGtmResult(*[np.nan]*7)
-
         n = profile.shape[0]
 
-        # calculate best-fit values of a and b
+        # calculate best-fit values of a, b, and x_i
         profile_fft = np.fft.rfft(profile)
         profile_sum = profile_fft[0].real
-        profile_sqsum = 2*np.real(np.trapezoid(np.abs(profile_fft)**2))/n
 
         phase = -2j*np.pi*np.fft.rfftfreq(n)
-        ccf_tauhat_fft = np.conj(np.exp(phase)*self.template_fft)*profile_fft
-        ccf_tauhat = 2*np.real(np.trapezoid(ccf_tauhat_fft))/n
+        ccf_fft = np.conj(np.exp(phase)*self.template_fft)*profile_fft
+        ccf = 2*np.real(np.trapezoid(ccf_fft))/n
 
-        ahat = (ccf_tauhat - profile_sum*self.template_sum/n)
+        ahat = (ccf - profile_sum*self.template_sum/n)
         ahat /= (self.template_sqsum - self.template_sum**2/n)
         bhat = (profile_sum - ahat*self.template_sum)/n
+
+        xhats = []
+        for pc_fft in self.pcs_fft:
+            pccf_fft = np.conj(np.exp(phase)*pc_fft)*profile_fft
+            pccf = 2*np.real(np.trapezoid(pccf_fft))/n
+            xhats.append(pccf/ahat)
+        xhats = np.array(xhats)
 
         # estimate noise level from upper 1/4 of profile FFT
         sigma2hat = np.mean(np.abs(profile_fft[-n//8-1:-1])**2)/n
@@ -141,8 +145,19 @@ class GtmEstimator:
         tau_error = sigmahat*np.sqrt(-2/obj_dderiv)
         a_error = sigmahat/np.sqrt(self.template_sqsum - self.template_sum**2/n)
         b_error = sigmahat/np.sqrt(n)
+        x_errors = sigmahat/ahat*np.ones_like(xhats)
 
-        return ToaGtmResult(tauhat, ahat, bhat, sigmahat, tau_error, a_error, b_error)
+        return ToaGtmResult(
+            toa=tauhat,
+            ampl=ahat,
+            offset=bhat,
+            scores=xhats,
+            sigma=sigmahat,
+            toa_error=tau_error,
+            ampl_error=a_error,
+            offset_error=b_error,
+            score_errors=x_errors,
+        )
 
     def estimate_toa(self, profile, tol=np.sqrt(np.finfo(np.float64).eps)):
         tauhat = self.maximize_objective_function(profile, tol)
@@ -157,7 +172,21 @@ class GtmEstimator:
             result = self.build_toa_result(profile, tauhat)
             results.append(result)
 
-        records = np.rec.fromrecords(results, names=ToaGtmResult._fields)
+        n_pcs = self.pcs_fft.shape[0]
+        records = np.rec.fromrecords(
+            results,
+            dtype=[
+                ('toa', np.float64),
+                ('ampl', np.float64),
+                ('offset', np.float64),
+                ('scores', np.float64, (n_pcs,)),
+                ('sigma', np.float64),
+                ('toa_error', np.float64),
+                ('ampl_error', np.float64),
+                ('offset_error', np.float64),
+                ('score_errors', np.float64, (n_pcs,)),
+            ],
+        )
 
         return ToaGtmResults(records)
 
@@ -290,4 +319,5 @@ class MapEstimator:
         )
         if not result.success:
             logger.warning(result.message)
-        return result.x
+        ahat, tauhat = result.x
+        return ahat, tauhat
