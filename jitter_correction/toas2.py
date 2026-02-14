@@ -3,6 +3,7 @@ import numba as nb
 from scipy.optimize import minimize_scalar
 from loguru import logger
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from .mixins import NpzSerializable, Hdf5Serializable, RecordContainer
 
@@ -71,10 +72,14 @@ class FourierEstimator:
         return obj
 
     def maximize_objective_function(self, profile, tol):
+        n = profile.shape[0]
+
         objective_fn = self.get_objective_function(profile, vectorize=False)
         objective_fn_samples = self.sample_objective_function(profile)
 
         sample_argmax = np.argmax(objective_fn_samples)
+        if sample_argmax > n/2:
+            sample_argmax -= n
         bracket = (sample_argmax - 1, sample_argmax, sample_argmax + 1)
 
         result = minimize_scalar(
@@ -85,10 +90,13 @@ class FourierEstimator:
         )
         if not result.success:
             logger.error(result.message)
-            return ToaResult(np.nan, np.nan, np.nan)
+            return np.nan
         return result.x
 
     def build_toa_result(self, profile, tauhat):
+        if np.isnan(tauhat):
+            return ToaResult(*[np.nan]*7)
+
         n = profile.shape[0]
 
         # calculate best-fit values of a and b
