@@ -178,7 +178,6 @@ class RecordContainer(Generic[T]):
                 for rec in self.data:
                     yield record_type(*rec)
 
-            @classmethod
             def __getitem__(self, key) -> record_type | Self:
                 '''
                 Allow slicing the array to return new container objects
