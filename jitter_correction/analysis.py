@@ -34,7 +34,7 @@ class AnalysisResult(Generic[M, T], Hdf5Serializable):
     toa_results: T
 
 @dataclass
-class ComprehensiveResult(Hdf5Serializable):
+class Report(Hdf5Serializable):
     profile_model: ProfileModel
     training_data: ProfileData
     validation_data: ProfileData
@@ -65,7 +65,7 @@ def run_analyses(
         for name in analyses
     }
 
-    return ComprehensiveResult(
+    return Report(
         profile_model,
         training_data,
         validation_data,
