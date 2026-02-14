@@ -121,11 +121,13 @@ def extract_pcs(
 def plot_pcs(
         model: PrincipalComponentModel,
         n_pcs: int | np.integer,
+        fig: plt.Figure | None = None,
     ) -> tuple[plt.Figure, tuple[plt.Axes, plt.Axes, plt.Axes]]:
     '''
-
+    Plot principal components.
     '''
-    fig = plt.figure(figsize=(5.4, 4.8))
+    if fig is None:
+        fig = plt.figure(figsize=(5.4, 4.8))
     (spec1, spec2, spec3, spec4) = mpl.gridspec.GridSpec(
         nrows=2, ncols=2, width_ratios=(1.0, 0.25), height_ratios=(0.35, 1.0)
     )
