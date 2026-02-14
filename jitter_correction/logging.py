@@ -5,7 +5,7 @@ def enable(level="INFO"):
     logger.add(
         sys.stderr,
         level=level,
-        format="<lvl>{level:<8}</lvl> ({name}:{line}): <lvl>{message}</lvl>"
+        format="<lvl>{level:<8}</lvl> ({name}:{line}): {message}"
     )
 
 def disable():
