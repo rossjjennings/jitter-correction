@@ -6,10 +6,10 @@ from scipy import stats
 from dataclasses import dataclass
 from typing import Self, Iterator, NamedTuple
 
-from .mixins import NpzSerializable, Hdf5Serializable
+from .mixins import Serializable, RecordType
 
 @dataclass(slots=True)
-class Subpulse:
+class Subpulse(RecordType):
     '''
     One component of a pulse.
     
@@ -22,14 +22,14 @@ class Subpulse:
     fj        : Jitter parameter (std. dev. of location over `width`).
     modindex  : Modulation index (std. dev. of amplitude over `amplitude`).
     '''
-    amplitude: float | np.floating
-    loc: float | np.floating
-    width: float | np.floating
-    fj: float | np.floating
-    modindex: float | np.floating
+    amplitude: np.floating
+    loc: np.floating
+    width: np.floating
+    fj: np.floating
+    modindex: np.floating
 
 @dataclass(slots=True)
-class PulseSpec(NpzSerializable, Hdf5Serializable):
+class PulseSpec(Serializable):
     '''
     Specification of a multi-component Gaussian model for generating pulses.
     

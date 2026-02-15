@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from .profile_data import ProfileData
 from .toas import get_toas
-from .mixins import NpzSerializable, Hdf5Serializable, RecordContainer
+from .mixins import RecordContainer
 
 eps=np.finfo(np.float64).eps
 
@@ -65,11 +65,7 @@ class ToaSkewnessResult(NamedTuple):
     skewness_coeff: float | np.floating
 
 @dataclass(slots=True)
-class ToaSkewnessResults(
-    NpzSerializable,
-    Hdf5Serializable,
-    RecordContainer[ToaSkewnessResult],
-):
+class ToaSkewnessResults(RecordContainer[ToaSkewnessResult]):
     pass
 
 def get_toas_skewness(

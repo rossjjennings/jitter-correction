@@ -10,7 +10,7 @@ import sys
 
 from .signal import fft_roll, rolling_sum, interp_ws
 from .profile_data import ProfileData
-from .mixins import NpzSerializable, Hdf5Serializable, RecordContainer
+from .mixins import RecordContainer
 
 eps = np.finfo(np.float64).eps
 if hasattr(np, "trapezoid"):
@@ -48,7 +48,7 @@ class ToaResult(NamedTuple):
     ampl: float | np.floating
 
 @dataclass(slots=True)
-class ToaResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaResult]):
+class ToaResults(RecordContainer[ToaResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''

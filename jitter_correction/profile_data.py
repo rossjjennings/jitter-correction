@@ -7,11 +7,11 @@ from typing import Any
 from collections.abc import Callable
 
 from .pulse_spec import PulseSpec
-from .mixins import NpzSerializable, Hdf5Serializable
+from .mixins import Serializable
 from .signal import fft_roll
 
 @dataclass(slots=True)
-class ProfileData(NpzSerializable, Hdf5Serializable):
+class ProfileData(Serializable):
     '''
     A set of profiles and corresponding phase information.
     '''

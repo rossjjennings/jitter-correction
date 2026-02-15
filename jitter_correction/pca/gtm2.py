@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import NamedTuple
 from functools import partial
 
-from ..mixins import NpzSerializable, Hdf5Serializable, RecordContainer, RecordType
+from ..mixins import RecordType, RecordContainer
 
 @dataclass(slots=True, repr=False)
 class ToaGtmResult(RecordType):
@@ -22,7 +22,7 @@ class ToaGtmResult(RecordType):
     score_errors: np.ndarray
 
 @dataclass
-class ToaGtmResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaGtmResult]):
+class ToaGtmResults(RecordContainer[ToaGtmResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''

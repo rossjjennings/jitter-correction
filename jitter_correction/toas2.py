@@ -5,7 +5,7 @@ from loguru import logger
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from .mixins import NpzSerializable, Hdf5Serializable, RecordContainer, RecordType
+from .mixins import RecordType, RecordContainer
 
 @dataclass(slots=True, repr=False)
 class ToaResult(RecordType):
@@ -18,7 +18,7 @@ class ToaResult(RecordType):
     offset_error: np.floating
 
 @dataclass
-class ToaResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaResult]):
+class ToaResults(RecordContainer[ToaResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''

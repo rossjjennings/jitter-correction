@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from ..signal import fft_roll
 from ..toas import toa_fourier
 from ..profile_data import ProfileData
-from ..mixins import NpzSerializable, Hdf5Serializable, RecordContainer
+from ..mixins import RecordContainer
 from .pcs import PrincipalComponentModel
 
 eps=np.finfo(np.float64).eps
@@ -19,7 +19,7 @@ class ToaScoreResult(NamedTuple):
     scores: np.ndarray
 
 @dataclass(slots=True)
-class ToaScoreResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaScoreResult]):
+class ToaScoreResults(RecordContainer[ToaScoreResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''

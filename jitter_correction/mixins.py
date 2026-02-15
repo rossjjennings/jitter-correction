@@ -144,7 +144,11 @@ class NpzSerializable:
         return cls(**npz)
 
 @dataclass(slots=True)
-class RecordType:
+class Serializable(Hdf5Serializable, NpzSerializable):
+    pass
+
+@dataclass(slots=True)
+class RecordType(Serializable):
     '''
     A type which can be converted into a record stored in a Numpy record array.
     Subclasses must only have fields which are Numpy scalars or arrays.
@@ -209,7 +213,7 @@ class RecordContainer(Generic[T]):
         Construct a mixin class representing a container for a record type
         '''
         @dataclass(slots=True)
-        class RecordContainerAlias:
+        class RecordContainerAlias(Serializable):
             '''
             A mixin representing a container for a specific record type
             '''
