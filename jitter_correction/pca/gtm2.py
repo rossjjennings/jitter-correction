@@ -12,12 +12,13 @@ class ToaGtmResult(NamedTuple):
     toa: np.floating
     ampl: np.floating
     offset: np.floating
-    scores: np.array
+    scores: np.ndarray
     sigma: np.floating
     toa_error: np.floating
     ampl_error: np.floating
+    toa_ampl_corr: np.floating
     offset_error: np.floating
-    score_errors: np.array
+    score_errors: np.ndarray
 
 @dataclass
 class ToaGtmResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaGtmResult]):
@@ -155,6 +156,7 @@ class GtmEstimator:
             sigma=sigmahat,
             toa_error=tau_error,
             ampl_error=a_error,
+            toa_ampl_corr=a_error.dtype.type(0),
             offset_error=b_error,
             score_errors=x_errors,
         )
@@ -183,6 +185,7 @@ class GtmEstimator:
                 ('sigma', np.float64),
                 ('toa_error', np.float64),
                 ('ampl_error', np.float64),
+                ('toa_ampl_corr', np.float64),
                 ('offset_error', np.float64),
                 ('score_errors', np.float64, (n_pcs,)),
             ],
@@ -308,7 +311,7 @@ class MapEstimator:
             sample_argmax -= n
 
         tau_guess = sample_argmax
-        a_guess = self.ahat_gtm(tau_guess)
+        a_guess = self.ahat_gtm(np.fft.rfft(profile), tau_guess)
 
         result = minimize(
             lambda x: -objective_fn(*x),
@@ -337,7 +340,7 @@ class MapEstimator:
             sigma = sigmahat
 
         bhat = (profile_sum - ahat*self.template_sum)/n
-        shrinkage_factors = 1/(1 + sigma**2/(self.eigvals*a))
+        shrinkage_factors = 1/(1 + sigma**2/(self.eigvals*ahat))
 
         xhats = []
         for pc_fft, shrinkage_factor in zip(self.pcs_fft, shrinkage_factors):
@@ -346,14 +349,37 @@ class MapEstimator:
             xhats.append(shrinkage_factor*pccf/ahat)
         xhats = np.array(xhats)
 
-        # calculate errors in tau (by finite difference), a, and b
-        h = np.finfo(np.float64).eps**(1/4)
-        obj0 = self.objective_function(profile_fft, tauhat)
-        obj1 = self.objective_function(profile_fft, tauhat - h)
-        obj2 = self.objective_function(profile_fft, tauhat + h)
-        obj_dderiv = (obj1 + obj2 - 2*obj0)/h**2
-        tau_error = sigma*np.sqrt(-2/obj_dderiv)
-        a_error = sigma/np.sqrt(self.template_sqsum - self.template_sum**2/n)
+        # calculate errors in tau, a (by finite difference), and b
+        h = np.finfo(np.float64).eps**(1/5)
+        w1 = np.sqrt(5) - 1
+        w2 = np.sqrt(5) + 1
+        w3 = np.sqrt(10 + 2*np.sqrt(5))
+        w4 = np.sqrt(10 - 2*np.sqrt(5))
+        w5 = 2 + w2
+        w6 = 2 - w1
+
+        u1 = w1/4
+        u2 = w2/4
+        v1 = w3/4
+        v2 = w4/4
+
+        objective_fn = self.get_objective_function(profile, sigma, vectorize=False)
+        f0 = objective_fn(ahat, tauhat)
+        f1 = objective_fn(ahat + h, tauhat)
+        f2 = objective_fn(ahat + u1*h, tauhat + v1*h)
+        f3 = objective_fn(ahat - u2*h, tauhat + v2*h)
+        f4 = objective_fn(ahat - u2*h, tauhat - v2*h)
+        f5 = objective_fn(ahat + u1*h, tauhat - v1*h)
+
+        dd_obj_da2 = (-10*f0 + 6*f1 - w1*f2 + w2*f3 + w2*f4 - w1*f5)/(5*h**2)
+        dd_obj_da_dtau = (w4*f2 - w3*f3 + w3*f4 - w4*f5)/(5*h**2)
+        dd_obj_dtau2 = (-10*f0 - 2*f1 + w5*f2 + w6*f3 + w6*f4 + w5*f5)/(5*h**2)
+
+        hessdet = dd_obj_da2*dd_obj_dtau2 - dd_obj_da_dtau**2
+        tau_error = sigma*np.sqrt(-2*dd_obj_da2/hessdet)
+        a_error = sigma*np.sqrt(-2*dd_obj_dtau2/hessdet)
+        a_tau_cov = 2*sigma**2*dd_obj_da_dtau/hessdet
+        a_tau_corr = a_tau_cov/(a_error*tau_error)
         b_error = sigma/np.sqrt(n)
         x_errors = sigma/ahat*shrinkage_factors
 
@@ -365,6 +391,7 @@ class MapEstimator:
             sigma=sigma,
             toa_error=tau_error,
             ampl_error=a_error,
+            toa_ampl_corr=a_tau_corr,
             offset_error=b_error,
             score_errors=x_errors,
         )
@@ -402,6 +429,7 @@ class MapEstimator:
                 ('scores', np.float64, (n_pcs,)),
                 ('sigma', np.float64),
                 ('toa_error', np.float64),
+                ('toa_ampl_corr', np.float64),
                 ('ampl_error', np.float64),
                 ('offset_error', np.float64),
                 ('score_errors', np.float64, (n_pcs,)),
