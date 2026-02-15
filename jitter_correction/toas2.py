@@ -9,12 +9,12 @@ from .mixins import NpzSerializable, Hdf5Serializable, RecordContainer
 
 class ToaResult(NamedTuple):
     toa: np.floating
-    a: np.floating
-    b: np.floating
+    ampl: np.floating
+    offset: np.floating
     sigma: np.floating
     toa_error: np.floating
-    a_error: np.floating
-    b_error: np.floating
+    ampl_error: np.floating
+    offset_error: np.floating
 
 @dataclass
 class ToaResults(NpzSerializable, Hdf5Serializable, RecordContainer[ToaResult]):
@@ -89,14 +89,10 @@ class FourierEstimator:
             tol = tol,
         )
         if not result.success:
-            logger.error(result.message)
-            return np.nan
+            logger.warning(result.message)
         return result.x
 
     def build_toa_result(self, profile, tauhat):
-        if np.isnan(tauhat):
-            return ToaResult(*[np.nan]*7)
-
         n = profile.shape[0]
 
         # calculate best-fit values of a and b
