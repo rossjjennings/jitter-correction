@@ -4,11 +4,15 @@ from scipy.optimize import minimize_scalar
 from loguru import logger
 from dataclasses import dataclass
 from typing import NamedTuple
+from collections.abc import Callable
 
 from .mixins import RecordType, RecordContainer
 
 @dataclass(slots=True, repr=False)
 class ToaResult(RecordType):
+    '''
+    Represents the result of fitting for a TOA.
+    '''
     toa: np.floating
     ampl: np.floating
     offset: np.floating
@@ -24,8 +28,14 @@ class ToaResults(RecordContainer[ToaResult]):
     '''
     pass
  
-class FourierEstimator:
-    def __init__(self, template):
+class TemplateMatchingEstimator:
+    '''
+    A TOA estimator based on matched filtering with a template profile.
+    '''
+    def __init__(self, template: np.ndarray):
+        '''
+        Construct the estimator and objective function from a template.
+        '''
         n = template.shape[0]
 
         template_fft = np.fft.rfft(template)
@@ -49,7 +59,27 @@ class FourierEstimator:
 
         self.objective_function = objective_function
 
-    def get_objective_function(self, profile, vectorize=True):
+    def get_objective_function(
+        self,
+        profile: np.ndarray,
+        vectorize: bool = True,
+    ) -> Callable[[float | np.floating], np.floating]:
+        '''
+        Return a callable objective function specialized to a profile.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        vectorize: If `True`, return a ufunc created with `numba.vectorize`.
+            Setting this to `False` reduces JIT compilation overhead
+            when there are relatively few function calls per profile.
+
+        Returns
+        -------
+        objective_for_profile: The objective function for this profile.
+            Accepts a proposed phased shift as input, and returns the
+            value of the objective function.
+        '''
         profile_fft = np.fft.rfft(profile)
         objective_function = self.objective_function
 
@@ -61,7 +91,22 @@ class FourierEstimator:
 
         return objective_for_profile
 
-    def sample_objective_function(self, profile):
+    def sample_objective_function(self, profile: np.ndarray) -> np.ndarray:
+        '''
+        Calculate values of the objective function at an evenly spaced series
+        of sample points, using an FFT. This can be done more efficiently than
+        evaluating the objective function at an arbitrary set of points.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+
+        Returns
+        -------
+        obj: Samples values of the objective function, at a series of points
+            with the same spacing as the profile samples. The first sample
+            corresponds to a phase shift of 0.
+        '''
         n = profile.shape[0]
 
         profile_fft = np.fft.rfft(profile)
@@ -72,7 +117,24 @@ class FourierEstimator:
         obj /= (self.template_sqsum - self.template_sum**2/n)
         return obj
 
-    def maximize_objective_function(self, profile, tol):
+    def maximize_objective_function(
+        self,
+        profile: np.ndarray,
+        tol: float | np.floating,
+    ) -> np.floating:
+        '''
+        Maximize the objective function for a specific profile and return
+        the best-fit value of the phase shift.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        tol: Numerical tolerance used in optimization.
+
+        Returns
+        -------
+        tauhat: Best-fit value of the phase shift.
+        '''
         n = profile.shape[0]
 
         objective_fn = self.get_objective_function(profile, vectorize=False)
@@ -93,7 +155,26 @@ class FourierEstimator:
             logger.warning(result.message)
         return result.x
 
-    def build_toa_result(self, profile, tauhat):
+    def build_toa_result(
+        self,
+        profile: np.ndarray,
+        tauhat: float | np.floating,
+    ) -> ToaResult:
+        '''
+        Given a profile and the corresponding best-fit phase shift, determine
+        other values of interest and their uncertainties, and construct a
+        `ToaResult` object.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        tauhat: Best-fit value of the phase shift.
+
+        Returns
+        -------
+        result: `ToaResult` object containing the complete results of the fit,
+            including parameters and their uncertainties.
+        '''
         n = profile.shape[0]
 
         # calculate best-fit values of a and b
@@ -125,13 +206,51 @@ class FourierEstimator:
 
         return ToaResult(tauhat, ahat, bhat, sigmahat, tau_error, a_error, b_error)
 
-    def estimate_toa(self, profile, tol=np.sqrt(np.finfo(np.float64).eps)):
+    def estimate_toa(
+        self,
+        profile: np.ndarray,
+        tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+    ) -> ToaResult:
+        '''
+        Given a profile, perform a fit and return the best-fit values and
+        uncertainties of the phase shift and supporting parameters, in the form
+        of a `ToaResult` object.
+
+        Parameters
+        ----------
+        profile: Profile for which to estimate the TOA.
+        tol: Numerical tolerance used in optimization.
+
+        Returns
+        -------
+        result: `ToaResult` object containing the complete results of the fit,
+            including parameter values and their uncertainties.
+        '''
         tauhat = self.maximize_objective_function(profile, tol)
         result = self.build_toa_result(profile, tauhat)
 
         return result
 
-    def estimate_toas(self, data, tol=np.sqrt(np.finfo(np.float64).eps)):
+    def estimate_toas(
+        self,
+        data: np.ndarray,
+        tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+    ) -> ToaResults:
+        '''
+        Given a collection of profiles, perform a fit for each of them and
+        return the best-fit values and uncertainties of the phase shift and
+        supporting parameters, in the form of a `ToaResults` object.
+
+        Parameters
+        ----------
+        data: `ProfileData` object containing the profiles to fit.
+        tol: Numerical tolerance used in optimization.
+
+        Returns
+        -------
+        result: `ToaResults` object containing the complete results of the fit
+            for each profile, including parameter values and uncertainties.
+        '''
         results = []
         for profile in data.profiles:
             tauhat = self.maximize_objective_function(profile, tol)
