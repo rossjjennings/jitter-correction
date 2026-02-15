@@ -143,14 +143,14 @@ class NpzSerializable:
         npz = np.load(filename)
         return cls(**npz)
 
-@dataclass
+@dataclass(slots=True)
 class RecordType:
     '''
     A type which can be converted into a record stored in a Numpy record array.
     Subclasses must only have fields which are Numpy scalars or arrays.
     '''
     def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
+        super(cls).__init_subclass__(**kwargs)
         for field in fields(cls):
             is_numpy_scalar = issubclass(field.type, np.generic)
             is_numpy_array = issubclass(field.type, np.ndarray)

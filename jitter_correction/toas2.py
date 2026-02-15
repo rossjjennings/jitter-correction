@@ -5,9 +5,10 @@ from loguru import logger
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from .mixins import NpzSerializable, Hdf5Serializable, RecordContainer
+from .mixins import NpzSerializable, Hdf5Serializable, RecordContainer, RecordType
 
-class ToaResult(NamedTuple):
+@dataclass(slots=True, repr=False)
+class ToaResult(RecordType):
     toa: np.floating
     ampl: np.floating
     offset: np.floating
@@ -137,6 +138,8 @@ class FourierEstimator:
             result = self.build_toa_result(profile, tauhat)
             results.append(result)
     
-        records = np.rec.fromrecords(results, names=ToaResult._fields)
+        records = np.rec.array(np.array(
+            [result.as_record() for result in results]
+        ))
 
         return ToaResults(records)

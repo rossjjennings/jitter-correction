@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from typing import NamedTuple
 from functools import partial
 
-from ..mixins import NpzSerializable, Hdf5Serializable, RecordContainer
+from ..mixins import NpzSerializable, Hdf5Serializable, RecordContainer, RecordType
 
-class ToaGtmResult(NamedTuple):
+@dataclass(slots=True, repr=False)
+class ToaGtmResult(RecordType):
     toa: np.floating
     ampl: np.floating
     offset: np.floating
@@ -174,22 +175,9 @@ class GtmEstimator:
             result = self.build_toa_result(profile, tauhat)
             results.append(result)
 
-        n_pcs = self.pcs_fft.shape[0]
-        records = np.rec.fromrecords(
-            results,
-            dtype=[
-                ('toa', np.float64),
-                ('ampl', np.float64),
-                ('offset', np.float64),
-                ('scores', np.float64, (n_pcs,)),
-                ('sigma', np.float64),
-                ('toa_error', np.float64),
-                ('ampl_error', np.float64),
-                ('toa_ampl_corr', np.float64),
-                ('offset_error', np.float64),
-                ('score_errors', np.float64, (n_pcs,)),
-            ],
-        )
+        records = np.rec.array(np.array(
+            [result.as_record() for result in results]
+        ))
 
         return ToaGtmResults(records)
 
@@ -419,21 +407,8 @@ class MapEstimator:
             result = self.build_toa_result(profile, ahat, tauhat, sigma)
             results.append(result)
 
-        n_pcs = self.pcs_fft.shape[0]
-        records = np.rec.fromrecords(
-            results,
-            dtype=[
-                ('toa', np.float64),
-                ('ampl', np.float64),
-                ('offset', np.float64),
-                ('scores', np.float64, (n_pcs,)),
-                ('sigma', np.float64),
-                ('toa_error', np.float64),
-                ('toa_ampl_corr', np.float64),
-                ('ampl_error', np.float64),
-                ('offset_error', np.float64),
-                ('score_errors', np.float64, (n_pcs,)),
-            ],
-        )
+        records = np.rec.array(np.array(
+            [result.as_record() for result in results]
+        ))
 
         return ToaGtmResults(records)
