@@ -5,6 +5,7 @@ from typing import Iterator, Self, TypeVar, Generic, Any
 from dataclasses import dataclass, fields
 from collections.abc import Mapping
 import importlib
+import sys
 
 def hdf5_save_item(key: str, item: Any, grp: h5py.Group):
     '''
@@ -141,6 +142,55 @@ class NpzSerializable:
         '''
         npz = np.load(filename)
         return cls(**npz)
+
+@dataclass
+class RecordType:
+    '''
+    A type which can be converted into a record stored in a Numpy record array.
+    Subclasses must only have fields which are Numpy scalars or arrays.
+    '''
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        for field in fields(cls):
+            is_numpy_scalar = issubclass(field.type, np.generic)
+            is_numpy_array = issubclass(field.type, np.ndarray)
+            if not (is_numpy_scalar or is_numpy_array):
+                raise ValueError(
+                    f"Field {field.name} has type {field.type}, "
+                    "which is neither a numpy scalar type nor an "
+                    "ndarray subclass."
+                )
+
+    def __repr__(self):
+        descr = f"{type(self).__name__}(\n"
+        items = []
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if len(value.shape) > 0:
+                with np.printoptions(linewidth=sys.maxsize, threshold=4, edgeitems=2):
+                    value_str = repr(value)
+            elif isinstance(value, np.floating):
+                value_str = f"{value:.12g}"
+            else:
+                value_str = str(value)
+            items.append(f"    {field.name}={value_str},")
+        descr += "\n".join(items)
+        descr += "\n)"
+        return descr
+
+    def as_record(self):
+        dtype = []
+        values = []
+        for field in fields(self):
+            value = getattr(self, field.name)
+            values.append(value)
+            if issubclass(field.type, np.ndarray):
+                dtype.append((field.name, value.dtype, value.shape))
+            else:
+                dtype.append((field.name, type(value)))
+        values = tuple(values)
+        record = np.rec.fromrecords(values, dtype=dtype)[()]
+        return record
 
 T = TypeVar("T")
 
