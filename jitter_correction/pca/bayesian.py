@@ -83,7 +83,7 @@ class PCBayesianEstimator:
         @nb.njit
         def objective_function(
             profile_fft: np.ndarray,
-            sigma: float | np.floating,
+            noise_level: float | np.floating,
             a: float | np.floating,
             tau: float | np.floating,
         ) -> np.floating:
@@ -93,7 +93,7 @@ class PCBayesianEstimator:
             Parameters
             ----------
             profile_fft: "Real" FFT (e.g., `np.fft.rfft()`) of the profile.
-            sigma: Estimate of the off-pulse noise level in the profile.
+            noise_level: Estimate of the off-pulse noise level in the profile.
             a: Proposed template amplitude.
             tau: Proposed phase shift.
 
@@ -111,9 +111,9 @@ class PCBayesianEstimator:
             for pc_fft, eigval in zip(pcs_fft, eigvals):
                 pccf_fft = np.conj(np.exp(phase)*pc_fft)*profile_fft
                 pccf = 2*np.real(trapezoid(pccf_fft))/n
-                shrinkage_factor = 1/(1 + sigma**2/(eigval*a))
+                shrinkage_factor = 1/(1 + noise_level**2/(eigval*a))
                 obj += shrinkage_factor*pccf**2
-                obj += sigma**2/n*np.log(2*np.pi*eigval*a**2/n)
+                obj += noise_level**2/n*np.log(2*np.pi*eigval*a**2/n)
 
             ahat = (ccf - profile_sum*template_sum/n)
             ahat /= (template_sqsum - template_sum**2/n)
@@ -126,7 +126,7 @@ class PCBayesianEstimator:
     def get_objective_function(
         self,
         profile: np.ndarray,
-        sigma: float | np.floating | None = None,
+        noise_level: float | np.floating | None = None,
         vectorize: bool = True,
     ) -> Callable[[float | np.floating, float | np.floating], np.floating]:
         '''
@@ -135,7 +135,7 @@ class PCBayesianEstimator:
         Parameters
         ----------
         profile: Profile for which to compute the objective function.
-        sigma: Estimate of the off-pulse noise level in the profile.
+        noise_level: Estimate of the off-pulse noise level in the profile.
             If `None`, it will be estimated from the highest 1/4 of
             frequencies in the FFT of the profile.
         vectorize: If `True`, return a ufunc created with `numba.vectorize`.
@@ -153,12 +153,12 @@ class PCBayesianEstimator:
         profile_fft = np.fft.rfft(profile)
         objective_function = self.objective_function
 
-        if sigma is None:
+        if noise_level is None:
             sigma2 = np.mean(np.abs(profile_fft[-n//8-1:-1])**2)/n
-            sigma = np.sqrt(sigma2)
+            noise_level = np.sqrt(sigma2)
 
         def objective_for_profile(a, tau):
-            return objective_function(profile_fft, sigma, a, tau)
+            return objective_function(profile_fft, noise_level, a, tau)
 
         if vectorize:
             objective_for_profile = nb.vectorize(objective_for_profile)
@@ -168,7 +168,7 @@ class PCBayesianEstimator:
     def get_1d_objective_function(
         self,
         profile: np.ndarray,
-        sigma: float | np.floating | None = None,
+        noise_level: float | np.floating | None = None,
     ) -> Callable[[float | np.floating], np.floating]:
         '''
         Return a callable version of the 1-dimensional objective function,
@@ -177,7 +177,7 @@ class PCBayesianEstimator:
         Parameters
         ----------
         profile: Profile for which to compute the objective function.
-        sigma: Estimate of the off-pulse noise level in the profile.
+        noise_level: Estimate of the off-pulse noise level in the profile.
             If `None`, it will be estimated from the highest 1/4 of
             frequencies in the FFT of the profile.
         vectorize: If `True`, return a ufunc created with `numba.vectorize`.
@@ -190,7 +190,7 @@ class PCBayesianEstimator:
             Accepts a proposed phased shift as input, and returns the value of
             the objective function.
         '''
-        objective_fn = self.get_objective_function(profile, sigma)
+        objective_fn = self.get_objective_function(profile, noise_level)
 
         @partial(np.frompyfunc, nin=1, nout=1)
         def oned_objective(tau):
@@ -248,7 +248,7 @@ class PCBayesianEstimator:
         self,
         profile: np.ndarray,
         tol: float | np.floating,
-        sigma: float | np.floating | None = None,
+        noise_level: float | np.floating | None = None,
     ) -> tuple[np.floating, np.floating]:
         '''
         Maximize the objective function for a specific profile and return
@@ -257,7 +257,7 @@ class PCBayesianEstimator:
         Parameters
         ----------
         profile: Profile for which to compute the objective function.
-        sigma: Estimate of the off-pulse noise level in the profile.
+        noise_level: Estimate of the off-pulse noise level in the profile.
             If `None`, it will be estimated from the highest 1/4 of
             frequencies in the FFT of the profile.
         tol: Numerical tolerance used in optimization.
@@ -268,7 +268,11 @@ class PCBayesianEstimator:
         '''
         n = profile.shape[0]
 
-        objective_fn = self.get_objective_function(profile, sigma, vectorize=False)
+        objective_fn = self.get_objective_function(
+            profile,
+            noise_level,
+            vectorize=False,
+        )
         ml_objective_samples = self.sample_ml_objective(profile)
 
         sample_argmax = np.argmax(ml_objective_samples)
@@ -295,7 +299,7 @@ class PCBayesianEstimator:
         profile: np.ndarray,
         ahat: float | np.floating,
         tauhat: float | np.floating,
-        sigma: float | np.floating | None = None,
+        noise_level: float | np.floating | None = None,
     ) -> ToaPcaResult:
         '''
         Given a profile and the corresponding best-fit phase shift, determine
@@ -307,7 +311,7 @@ class PCBayesianEstimator:
         profile: Profile for which to compute the objective function.
         ahat: Best-fit value of the template amplitude.
         tauhat: Best-fit value of the phase shift.
-        sigma: Estimate of the off-pulse noise level in the profile.
+        noise_level: Estimate of the off-pulse noise level in the profile.
             If `None`, it will be estimated from the highest 1/4 of
             frequencies in the FFT of the profile.
 
@@ -323,14 +327,14 @@ class PCBayesianEstimator:
         profile_sum = profile_fft[0].real
         phase = -2j*np.pi*np.fft.rfftfreq(n)
 
-        if sigma is None:
+        if noise_level is None:
             # estimate noise level from upper 1/4 of profile FFT
             sigma2hat = np.mean(np.abs(profile_fft[-n//8-1:-1])**2)/n
             sigmahat = np.sqrt(sigma2hat)
-            sigma = sigmahat
+            noise_level = sigmahat
 
         bhat = (profile_sum - ahat*self.template_sum)/n
-        shrinkage_factors = 1/(1 + sigma**2/(self.eigvals*ahat))
+        shrinkage_factors = 1/(1 + noise_level**2/(self.eigvals*ahat))
 
         xhats = []
         for pc_fft, shrinkage_factor in zip(self.pcs_fft, shrinkage_factors):
@@ -353,7 +357,11 @@ class PCBayesianEstimator:
         v1 = w3/4
         v2 = w4/4
 
-        objective_fn = self.get_objective_function(profile, sigma, vectorize=False)
+        objective_fn = self.get_objective_function(
+            profile,
+            noise_level,
+            vectorize=False,
+        )
         f0 = objective_fn(ahat, tauhat)
         f1 = objective_fn(ahat + h, tauhat)
         f2 = objective_fn(ahat + u1*h, tauhat + v1*h)
@@ -366,19 +374,19 @@ class PCBayesianEstimator:
         dd_obj_dtau2 = (-10*f0 - 2*f1 + w5*f2 + w6*f3 + w6*f4 + w5*f5)/(5*h**2)
 
         hessdet = dd_obj_da2*dd_obj_dtau2 - dd_obj_da_dtau**2
-        tau_error = sigma*np.sqrt(-2*dd_obj_da2/hessdet)
-        a_error = sigma*np.sqrt(-2*dd_obj_dtau2/hessdet)
-        a_tau_cov = 2*sigma**2*dd_obj_da_dtau/hessdet
+        tau_error = noise_level*np.sqrt(-2*dd_obj_da2/hessdet)
+        a_error = noise_level*np.sqrt(-2*dd_obj_dtau2/hessdet)
+        a_tau_cov = 2*noise_level**2*dd_obj_da_dtau/hessdet
         a_tau_corr = a_tau_cov/(a_error*tau_error)
-        b_error = sigma/np.sqrt(n)
-        x_errors = sigma/ahat*shrinkage_factors
+        b_error = noise_level/np.sqrt(n)
+        x_errors = noise_level/ahat*shrinkage_factors
 
         return ToaPcaResult(
             toa=tauhat,
             ampl=ahat,
             offset=bhat,
             scores=xhats,
-            sigma=sigma,
+            noise_level=noise_level,
             toa_error=tau_error,
             ampl_error=a_error,
             toa_ampl_corr=a_tau_corr,
@@ -390,7 +398,7 @@ class PCBayesianEstimator:
         self,
         profile: np.ndarray,
         tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
-        sigma: float | np.floating | None =None,
+        noise_level: float | np.floating | None =None,
     ) -> ToaPcaResult:
         '''
         Given a profile, perform a fit and return the best-fit values and
@@ -401,7 +409,7 @@ class PCBayesianEstimator:
         ----------
         profile: Profile for which to estimate the TOA.
         tol: Numerical tolerance used in optimization.
-        sigma: Estimate of the off-pulse noise level in the profile.
+        noise_level: Estimate of the off-pulse noise level in the profile.
             If `None`, it will be estimated from the highest 1/4 of
             frequencies in the FFT of the profile.
 
@@ -410,7 +418,11 @@ class PCBayesianEstimator:
         result: `ToaPcaResult` object containing the complete fit results,
             including parameter values and their uncertainties.
         '''
-        ahat, tauhat = self.maximize_objective_function(profile, tol, sigma)
+        ahat, tauhat = self.maximize_objective_function(
+            profile,
+            tol=tol,
+            noise_level=noise_level,
+        )
         result = self.build_toa_result(profile, ahat, tauhat, sigma)
 
         return result
@@ -419,7 +431,7 @@ class PCBayesianEstimator:
         self,
         data: ProfileData,
         tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
-        sigma: float | np.floating | None = None,
+        noise_level: float | np.floating | None = None,
     ) -> ToaPcaResults:
         '''
         Given a collection of profiles, perform a fit for each of them and
@@ -430,7 +442,7 @@ class PCBayesianEstimator:
         ----------
         data: `ProfileData` object containing the profiles to fit.
         tol: Numerical tolerance used in optimization.
-        sigma: Estimate of the off-pulse noise level in the profiles.
+        noise_level: Estimate of the off-pulse noise level in the profiles.
             If `None`, it will be estimated from the highest 1/4 of
             frequencies in the FFT of the profile.
 
@@ -441,8 +453,12 @@ class PCBayesianEstimator:
         '''
         results = []
         for profile in data.profiles:
-            ahat, tauhat = self.maximize_objective_function(profile, tol, sigma)
-            result = self.build_toa_result(profile, ahat, tauhat, sigma)
+            ahat, tauhat = self.maximize_objective_function(
+                profile,
+                tol=tol,
+                noise_level=noise_level,
+            )
+            result = self.build_toa_result(profile, ahat, tauhat, noise_level)
             results.append(result)
 
         records = np.rec.array(np.array(

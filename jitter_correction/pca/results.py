@@ -12,7 +12,7 @@ class ToaPcaResult(RecordType):
     ampl: np.floating
     offset: np.floating
     scores: np.ndarray
-    sigma: np.floating
+    noise_level: np.floating
     toa_error: np.floating
     ampl_error: np.floating
     toa_ampl_corr: np.floating

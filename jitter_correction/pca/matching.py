@@ -183,6 +183,7 @@ class PCMatchingEstimator:
         self,
         profile: np.ndarray,
         tauhat: float | np.floating,
+        noise_level: float | np.floating | None = None,
     ) -> ToaPcaResult:
         '''
         Given a profile and the corresponding best-fit phase shift, determine
@@ -193,6 +194,9 @@ class PCMatchingEstimator:
         ----------
         profile: Profile for which to compute the objective function.
         tauhat: Best-fit value of the phase shift.
+        noise_level: Estimate of the off-pulse noise level in the profiles.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
 
         Returns
         -------
@@ -220,9 +224,11 @@ class PCMatchingEstimator:
             xhats.append(pccf/ahat)
         xhats = np.array(xhats)
 
-        # estimate noise level from upper 1/4 of profile FFT
-        sigma2hat = np.mean(np.abs(profile_fft[-n//8-1:-1])**2)/n
-        sigmahat = np.sqrt(sigma2hat)
+        if noise_level is not None:
+            # estimate noise level from upper 1/4 of profile FFT
+            sigma2hat = np.mean(np.abs(profile_fft[-n//8-1:-1])**2)/n
+            sigmahat = np.sqrt(sigma2hat)
+            noise_level = sigmahat
 
         # calculate errors in tau (by finite difference), a, and b
         h = np.finfo(np.float64).eps**(1/4)
@@ -230,17 +236,17 @@ class PCMatchingEstimator:
         obj1 = self.objective_function(profile_fft, tauhat - h)
         obj2 = self.objective_function(profile_fft, tauhat + h)
         obj_dderiv = (obj1 + obj2 - 2*obj0)/h**2
-        tau_error = sigmahat*np.sqrt(-2/obj_dderiv)
-        a_error = sigmahat/np.sqrt(self.template_sqsum - self.template_sum**2/n)
-        b_error = sigmahat/np.sqrt(n)
-        x_errors = sigmahat/ahat*np.ones_like(xhats)
+        tau_error = noise_level*np.sqrt(-2/obj_dderiv)
+        a_error = noise_level/np.sqrt(self.template_sqsum - self.template_sum**2/n)
+        b_error = noise_level/np.sqrt(n)
+        x_errors = noise_level/ahat*np.ones_like(xhats)
 
         return ToaPcaResult(
             toa=tauhat,
             ampl=ahat,
             offset=bhat,
             scores=xhats,
-            sigma=sigmahat,
+            noise_level=noise_level,
             toa_error=tau_error,
             ampl_error=a_error,
             toa_ampl_corr=a_error.dtype.type(0),
@@ -252,6 +258,7 @@ class PCMatchingEstimator:
         self,
         profile: np.ndarray,
         tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+        noise_level: float | np.floating | None = None,
     ) -> ToaPcaResult:
         '''
         Given a profile, perform a fit and return the best-fit values and
@@ -262,6 +269,9 @@ class PCMatchingEstimator:
         ----------
         profile: Profile for which to estimate the TOA.
         tol: Numerical tolerance used in optimization.
+        noise_level: Estimate of the off-pulse noise level in the profiles.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
 
         Returns
         -------
@@ -269,7 +279,7 @@ class PCMatchingEstimator:
             including parameter values and their uncertainties.
         '''
         tauhat = self.maximize_objective_function(profile, tol)
-        result = self.build_toa_result(profile, tauhat)
+        result = self.build_toa_result(profile, tauhat, noise_level)
 
         return result
 
@@ -277,6 +287,7 @@ class PCMatchingEstimator:
         self,
         data: ProfileData,
         tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+        noise_level: float | np.floating | None = None,
     ) -> ToaPcaResults:
         '''
         Given a collection of profiles, perform a fit for each of them and
@@ -287,6 +298,9 @@ class PCMatchingEstimator:
         ----------
         data: `ProfileData` object containing the profiles to fit.
         tol: Numerical tolerance used in optimization.
+        noise_level: Estimate of the off-pulse noise level in the profiles.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
 
         Returns
         -------
@@ -296,7 +310,7 @@ class PCMatchingEstimator:
         results = []
         for profile in data.profiles:
             tauhat = self.maximize_objective_function(profile, tol)
-            result = self.build_toa_result(profile, tauhat)
+            result = self.build_toa_result(profile, tauhat, noise_level)
             results.append(result)
 
         records = np.rec.array(np.array(
