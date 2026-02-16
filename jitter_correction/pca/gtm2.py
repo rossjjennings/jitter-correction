@@ -5,11 +5,17 @@ from loguru import logger
 from dataclasses import dataclass
 from typing import NamedTuple
 from functools import partial
+from collections.abc import Callable
 
 from ..mixins import RecordType, RecordContainer
+from ..profile_data import ProfileData
+from .pcs import PrincipalComponentModel
 
 @dataclass(slots=True, repr=False)
-class ToaGtmResult(RecordType):
+class ToaPcaResult(RecordType):
+    '''
+    Represents the result of fitting for a TOA and principal component scores.
+    '''
     toa: np.floating
     ampl: np.floating
     offset: np.floating
@@ -22,14 +28,26 @@ class ToaGtmResult(RecordType):
     score_errors: np.ndarray
 
 @dataclass
-class ToaGtmResults(RecordContainer[ToaGtmResult]):
+class ToaPcaResults(RecordContainer[ToaPcaResult]):
     '''
-    Represents the result of fitting for TOAs for several profiles.
+    Represents the result of fitting for TOAs and principal component scores
+    for several profiles.
     '''
     pass
 
-class GtmEstimator:
-    def __init__(self, model):
+class PcMatchingEstimator:
+    '''
+    A TOA estimator based on matched filtering with a flexible profile model
+    which can be described as the sum of a template profile and scaled copies
+    of several principal components. TOA estimation is based on the method of
+    maximum likelihood.
+    '''
+    def __init__(self, model: PrincipalComponentModel):
+        '''
+        Construct the estimator from a principal component model. Pre-computes
+        FFTs of the template and each principal component, and constructs a
+        Numba JIT function to compute the objective given a profile FFT.
+        '''
         n = model.template.shape[0]
         k = model.pcs.shape[0]
 
@@ -62,7 +80,27 @@ class GtmEstimator:
 
         self.objective_function = objective_function
 
-    def get_objective_function(self, profile, vectorize=True):
+    def get_objective_function(
+        self,
+        profile: np.ndarray,
+        vectorize: bool = True
+    ) -> Callable[[float | np.floating], np.floating]:
+        '''
+        Return a callable objective function specialized to a profile.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        vectorize: If `True`, return a ufunc created with `numba.vectorize`.
+            Setting this to `False` reduces JIT compilation overhead
+            when there are relatively few function calls per profile.
+
+        Returns
+        -------
+        objective_for_profile: The objective function for this profile.
+            Accepts a proposed phased shift as input, and returns the
+            value of the objective function.
+        '''
         profile_fft = np.fft.rfft(profile)
         objective_function = self.objective_function
 
@@ -74,7 +112,22 @@ class GtmEstimator:
 
         return objective_for_profile
 
-    def sample_objective_function(self, profile):
+    def sample_objective_function(self, profile: np.ndarray) -> np.ndarray:
+        '''
+        Calculate values of the objective function at an evenly spaced series
+        of sample points, using an FFT. This can be done more efficiently than
+        evaluating the objective function at an arbitrary set of points.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+
+        Returns
+        -------
+        obj: Samples values of the objective function, at a series of points
+            with the same spacing as the profile samples. The first sample
+            corresponds to a phase shift of 0.
+        '''
         n = profile.shape[0]
         k = self.pcs_fft.shape[0]
 
@@ -91,7 +144,24 @@ class GtmEstimator:
 
         return obj
 
-    def maximize_objective_function(self, profile, tol):
+    def maximize_objective_function(
+        self,
+        profile: np.ndarray,
+        tol: float | np.floating,
+    ) -> np.floating:
+        '''
+        Maximize the objective function for a specific profile and return
+        the best-fit value of the phase shift.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        tol: Numerical tolerance used in optimization.
+
+        Returns
+        -------
+        tauhat: Best-fit value of the phase shift.
+        '''
         n = profile.shape[0]
 
         objective_fn = self.get_objective_function(profile, vectorize=False)
@@ -112,7 +182,26 @@ class GtmEstimator:
             logger.warning(result.message)
         return result.x
 
-    def build_toa_result(self, profile, tauhat):
+    def build_toa_result(
+        self,
+        profile: np.ndarray,
+        tauhat: float | np.floating,
+    ) -> ToaPcaResult:
+        '''
+        Given a profile and the corresponding best-fit phase shift, determine
+        other values of interest and their uncertainties, and construct a
+        `ToaPcaResult` object.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        tauhat: Best-fit value of the phase shift.
+
+        Returns
+        -------
+        result: `ToaPcaResult` object containing the complete fit results,
+            including parameters and their uncertainties.
+        '''
         n = profile.shape[0]
 
         # calculate best-fit values of a, b, and x_i
@@ -149,7 +238,7 @@ class GtmEstimator:
         b_error = sigmahat/np.sqrt(n)
         x_errors = sigmahat/ahat*np.ones_like(xhats)
 
-        return ToaGtmResult(
+        return ToaPcaResult(
             toa=tauhat,
             ampl=ahat,
             offset=bhat,
@@ -162,13 +251,51 @@ class GtmEstimator:
             score_errors=x_errors,
         )
 
-    def estimate_toa(self, profile, tol=np.sqrt(np.finfo(np.float64).eps)):
+    def estimate_toa(
+        self,
+        profile: np.ndarray,
+        tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+    ) -> ToaPcaResult:
+        '''
+        Given a profile, perform a fit and return the best-fit values and
+        uncertainties of the phase shift and supporting parameters, in the form
+        of a `ToaPcaResult` object.
+
+        Parameters
+        ----------
+        profile: Profile for which to estimate the TOA.
+        tol: Numerical tolerance used in optimization.
+
+        Returns
+        -------
+        result: `ToaPcaResult` object containing the complete fit results,
+            including parameter values and their uncertainties.
+        '''
         tauhat = self.maximize_objective_function(profile, tol)
         result = self.build_toa_result(profile, tauhat)
 
         return result
 
-    def estimate_toas(self, data, tol=np.sqrt(np.finfo(np.float64).eps)):
+    def estimate_toas(
+        self,
+        data: ProfileData,
+        tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+    ) -> ToaPcaResults:
+        '''
+        Given a collection of profiles, perform a fit for each of them and
+        return the best-fit values and uncertainties of the phase shift and
+        supporting parameters, in the form of a `ToaPcaResults` object.
+
+        Parameters
+        ----------
+        data: `ProfileData` object containing the profiles to fit.
+        tol: Numerical tolerance used in optimization.
+
+        Returns
+        -------
+        results: `ToaPcaResults` object containing the complete fit results
+            for each profile, including parameter values and uncertainties.
+        '''
         results = []
         for profile in data.profiles:
             tauhat = self.maximize_objective_function(profile, tol)
@@ -179,10 +306,23 @@ class GtmEstimator:
             [result.as_record() for result in results]
         ))
 
-        return ToaGtmResults(records)
+        return ToaPcaResults(records)
 
-class MapEstimator:
+class PcBayesianEstimator:
+    '''
+    A TOA estimator based on matched filtering with a flexible profile model
+    which can be described as the sum of a template profile and scaled copies
+    of several principal components, similar to `PcMatchingEstimator`. Unlike
+    in that case, a prior is imposed on the principal component scores, and
+    TOA estimation is based on maximizing the posterior density.
+    '''
     def __init__(self, model):
+        '''
+        Construct the estimator from a principal component model. Pre-computes
+        FFTs of the template and each principal component, and constructs
+        Numba JIT functions to compute the objective given a profile FFT, and
+        to compute the best-fit value of the template amplitude, `ahat`.
+        '''
         n = model.template.shape[0]
         k = model.pcs.shape[0]
 
@@ -237,7 +377,31 @@ class MapEstimator:
 
         self.objective_function = objective_function
 
-    def get_objective_function(self, profile, sigma=None, vectorize=True):
+    def get_objective_function(
+        self,
+        profile: np.ndarray,
+        sigma: float | np.floating | None = None,
+        vectorize: bool = True,
+    ) -> Callable[[float | np.floating, float | np.floating], np.floating]:
+        '''
+        Return a callable objective function specialized to a profile.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        sigma: Estimate of the off-pulse noise level in the profile.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
+        vectorize: If `True`, return a ufunc created with `numba.vectorize`.
+            Setting this to `False` reduces JIT compilation overhead
+            when there are relatively few function calls per profile.
+
+        Returns
+        -------
+        objective_for_profile: The objective function for this profile.
+            Accepts a proposed template amplitude and phase shift as input,
+            and returns the value of the objective function.
+        '''
         n = profile.shape[0]
 
         profile_fft = np.fft.rfft(profile)
@@ -255,7 +419,31 @@ class MapEstimator:
 
         return objective_for_profile
 
-    def get_1d_objective_function(self, profile, sigma=None):
+    def get_1d_objective_function(
+        self,
+        profile: np.ndarray,
+        sigma: float | np.floating | None = None,
+    ) -> Callable[[float | np.floating], np.floating]:
+        '''
+        Return a callable version of the 1-dimensional objective function,
+        specialized to a profile and optimized over the amplitude, `a`.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        sigma: Estimate of the off-pulse noise level in the profile.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
+        vectorize: If `True`, return a ufunc created with `numba.vectorize`.
+            Setting this to `False` reduces JIT compilation overhead
+            when there are relatively few function calls per profile.
+
+        Returns
+        -------
+        oned_objective: The 1-dimensional objective function for this profile.
+            Accepts a proposed phased shift as input, and returns the value of
+            the objective function.
+        '''
         objective_fn = self.get_objective_function(profile, sigma)
 
         @partial(np.frompyfunc, nin=1, nout=1)
@@ -271,7 +459,29 @@ class MapEstimator:
 
         return oned_objective
 
-    def sample_gtm_objective(self, profile):
+    def sample_ml_objective(self, profile: np.ndarray):
+        '''
+        Calculate values of the objective function (not including a correction
+        due to the prior) at an evenly spaced series of sample points, using
+        an FFT. This can be done more efficiently than evaluating the full
+        objective function at an arbitrary set of points.
+
+        Unlike values returned by the `sample_objective_function()` method of
+        `TemplateMatchingEstimator` and `PcMatchingEstimator` objects, values
+        returned by this function should not be expected to match the output
+        of the objective function exactly. They are used in fitting to obtain
+        a reasonable initial guess for the phase shift, which is then refined.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+
+        Returns
+        -------
+        obj: Samples values of the objective function, at a series of points
+            with the same spacing as the profile samples. The first sample
+            corresponds to a phase shift of 0.
+        '''
         n = profile.shape[0]
         k = self.pcs_fft.shape[0]
 
@@ -288,11 +498,32 @@ class MapEstimator:
 
         return obj
 
-    def maximize_objective_function(self, profile, tol, sigma=None):
+    def maximize_objective_function(
+        self,
+        profile: np.ndarray,
+        tol: float | np.floating,
+        sigma: float | np.floating | None = None,
+    ) -> tuple[np.floating, np.floating]:
+        '''
+        Maximize the objective function for a specific profile and return
+        the best-fit value of the phase shift.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        sigma: Estimate of the off-pulse noise level in the profile.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
+        tol: Numerical tolerance used in optimization.
+
+        Returns
+        -------
+        tauhat: Best-fit value of the phase shift.
+        '''
         n = profile.shape[0]
 
         objective_fn = self.get_objective_function(profile, sigma, vectorize=False)
-        gtm_objective_samples = self.sample_gtm_objective(profile)
+        gtm_objective_samples = self.sample_ml_objective(profile)
 
         sample_argmax = np.argmax(gtm_objective_samples)
         if sample_argmax > n/2:
@@ -313,7 +544,32 @@ class MapEstimator:
         ahat, tauhat = result.x
         return ahat, tauhat
 
-    def build_toa_result(self, profile, ahat, tauhat, sigma=None):
+    def build_toa_result(
+        self,
+        profile: np.ndarray,
+        ahat: float | np.floating,
+        tauhat: float | np.floating,
+        sigma: float | np.floating | None = None,
+    ) -> ToaPcaResult:
+        '''
+        Given a profile and the corresponding best-fit phase shift, determine
+        other values of interest and their uncertainties, and construct a
+        `ToaPcaResult` object.
+
+        Parameters
+        ----------
+        profile: Profile for which to compute the objective function.
+        ahat: Best-fit value of the template amplitude.
+        tauhat: Best-fit value of the phase shift.
+        sigma: Estimate of the off-pulse noise level in the profile.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
+
+        Returns
+        -------
+        result: `ToaPcaResult` object containing the complete fit results,
+            including parameters and their uncertainties.
+        '''
         n = profile.shape[0]
 
         # calculate best-fit values of a, b, and x_i
@@ -371,7 +627,7 @@ class MapEstimator:
         b_error = sigma/np.sqrt(n)
         x_errors = sigma/ahat*shrinkage_factors
 
-        return ToaGtmResult(
+        return ToaPcaResult(
             toa=tauhat,
             ampl=ahat,
             offset=bhat,
@@ -386,10 +642,28 @@ class MapEstimator:
 
     def estimate_toa(
         self,
-        profile,
-        tol=np.sqrt(np.finfo(np.float64).eps),
-        sigma=None,
-    ):
+        profile: np.ndarray,
+        tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+        sigma: float | np.floating | None =None,
+    ) -> ToaPcaResult:
+        '''
+        Given a profile, perform a fit and return the best-fit values and
+        uncertainties of the phase shift and supporting parameters, in the form
+        of a `ToaPcaResult` object.
+
+        Parameters
+        ----------
+        profile: Profile for which to estimate the TOA.
+        tol: Numerical tolerance used in optimization.
+        sigma: Estimate of the off-pulse noise level in the profile.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
+
+        Returns
+        -------
+        result: `ToaPcaResult` object containing the complete fit results,
+            including parameter values and their uncertainties.
+        '''
         ahat, tauhat = self.maximize_objective_function(profile, tol, sigma)
         result = self.build_toa_result(profile, ahat, tauhat, sigma)
 
@@ -397,10 +671,28 @@ class MapEstimator:
 
     def estimate_toas(
         self,
-        data,
-        tol=np.sqrt(np.finfo(np.float64).eps),
-        sigma=None,
-    ):
+        data: ProfileData,
+        tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+        sigma: float | np.floating | None = None,
+    ) -> ToaPcaResults:
+        '''
+        Given a collection of profiles, perform a fit for each of them and
+        return the best-fit values and uncertainties of the phase shift and
+        supporting parameters, in the form of a `ToaPcaResults` object.
+
+        Parameters
+        ----------
+        data: `ProfileData` object containing the profiles to fit.
+        tol: Numerical tolerance used in optimization.
+        sigma: Estimate of the off-pulse noise level in the profiles.
+            If `None`, it will be estimated from the highest 1/4 of
+            frequencies in the FFT of the profile.
+
+        Returns
+        -------
+        results: `ToaPcaResults` object containing the complete fit results
+            for each profile, including parameter values and uncertainties.
+        '''
         results = []
         for profile in data.profiles:
             ahat, tauhat = self.maximize_objective_function(profile, tol, sigma)
@@ -411,4 +703,4 @@ class MapEstimator:
             [result.as_record() for result in results]
         ))
 
-        return ToaGtmResults(records)
+        return ToaPcaResults(records)

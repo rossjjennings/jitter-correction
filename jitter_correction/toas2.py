@@ -7,6 +7,7 @@ from typing import NamedTuple
 from collections.abc import Callable
 
 from .mixins import RecordType, RecordContainer
+from .profile_data import ProfileData
 
 @dataclass(slots=True, repr=False)
 class ToaResult(RecordType):
@@ -35,6 +36,8 @@ class TemplateMatchingEstimator:
     def __init__(self, template: np.ndarray):
         '''
         Construct the estimator and objective function from a template.
+        Pre-computes an FFT of the template, and constructs a Numba JIT
+        function to compute the objective given a profile FFT.
         '''
         n = template.shape[0]
 
@@ -77,7 +80,7 @@ class TemplateMatchingEstimator:
         Returns
         -------
         objective_for_profile: The objective function for this profile.
-            Accepts a proposed phased shift as input, and returns the
+            Accepts a proposed phase shift as input, and returns the
             value of the objective function.
         '''
         profile_fft = np.fft.rfft(profile)
@@ -233,7 +236,7 @@ class TemplateMatchingEstimator:
 
     def estimate_toas(
         self,
-        data: np.ndarray,
+        data: ProfileData,
         tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
     ) -> ToaResults:
         '''
