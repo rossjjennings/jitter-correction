@@ -51,7 +51,22 @@ class TemplateMatchingEstimator:
         self.template_sqsum = template_sqsum
 
         @nb.njit
-        def objective_function(profile_fft, tau):
+        def objective_function(
+            profile_fft: np.ndarray,
+            tau: float | np.floating,
+        ) -> np.floating:
+            '''
+            Compute the objective function given the FFT of a profile.
+
+            Parameters
+            ----------
+            profile_fft: "Real" FFT (e.g., `np.fft.rfft()`) of the profile.
+            tau: Proposed phase shift.
+
+            Returns
+            -------
+            obj: Value of the objective function.
+            '''
             profile_sum = profile_fft[0].real
             phase = phase_gradient*tau
             ccf_fft = np.conj(np.exp(phase)*template_fft)*profile_fft

@@ -63,7 +63,22 @@ class PcMatchingEstimator:
         self.template_sqsum = template_sqsum
 
         @nb.njit
-        def objective_function(profile_fft, tau):
+        def objective_function(
+            profile_fft: np.ndarray,
+            tau: float | np.floating,
+        ) -> np.floating:
+            '''
+            Compute the objective function given the FFT of a profile.
+
+            Parameters
+            ----------
+            profile_fft: "Real" FFT (e.g., `np.fft.rfft()`) of the profile.
+            tau: Proposed phase shift.
+
+            Returns
+            -------
+            obj: Value of the objective function.
+            '''
             profile_sum = profile_fft[0].real
             phase = phase_gradient*tau
             ccf_fft = np.conj(np.exp(phase)*template_fft)*profile_fft
@@ -316,12 +331,12 @@ class PcBayesianEstimator:
     in that case, a prior is imposed on the principal component scores, and
     TOA estimation is based on maximizing the posterior density.
     '''
-    def __init__(self, model):
+    def __init__(self, model: PrincipalComponentModel):
         '''
         Construct the estimator from a principal component model. Pre-computes
         FFTs of the template and each principal component, and constructs
         Numba JIT functions to compute the objective given a profile FFT, and
-        to compute the best-fit value of the template amplitude, `ahat`.
+        to estimate the best-fit value of the template amplitude, `ahat`.
         '''
         n = model.template.shape[0]
         k = model.pcs.shape[0]
@@ -340,7 +355,24 @@ class PcBayesianEstimator:
         self.template_sqsum = template_sqsum
 
         @nb.njit
-        def ahat_gtm(profile_fft, tau):
+        def ahat_ml(
+            profile_fft: np.ndarray,
+            tau: float | np.floating,
+        ) -> np.floating:
+            '''
+            Compute an estimate of the best-fit template amplitude.
+            Does not include a correction due to the prior.
+            This is used in fitting to find an appropriate initial guess.
+
+            Parameters
+            ----------
+            profile_fft: "Real" FFT (e.g., `np.fft.rfft()`) of the profile.
+            tau: Proposed phase shift.
+
+            Returns
+            -------
+            ahat: Estimated value of the template amplitude.
+            '''
             profile_sum = profile_fft[0].real
             phase = phase_gradient*tau
             ccf_fft = np.conj(np.exp(phase)*template_fft)*profile_fft
@@ -351,10 +383,29 @@ class PcBayesianEstimator:
 
             return ahat
 
-        self.ahat_gtm = ahat_gtm
+        self.ahat_ml = ahat_ml
 
         @nb.njit
-        def objective_function(profile_fft, sigma, a, tau):
+        def objective_function(
+            profile_fft: np.ndarray,
+            sigma: float | np.floating,
+            a: float | np.floating,
+            tau: float | np.floating,
+        ) -> np.floating:
+            '''
+            Compute the objective function given the FFT of a profile.
+
+            Parameters
+            ----------
+            profile_fft: "Real" FFT (e.g., `np.fft.rfft()`) of the profile.
+            sigma: Estimate of the off-pulse noise level in the profile.
+            a: Proposed template amplitude.
+            tau: Proposed phase shift.
+
+            Returns
+            -------
+            obj: Value of the objective function.
+            '''
             profile_sum = profile_fft[0].real
             phase = phase_gradient*tau
             ccf_fft = np.conj(np.exp(phase)*template_fft)*profile_fft
@@ -530,7 +581,7 @@ class PcBayesianEstimator:
             sample_argmax -= n
 
         tau_guess = sample_argmax
-        a_guess = self.ahat_gtm(np.fft.rfft(profile), tau_guess)
+        a_guess = self.ahat_ml(np.fft.rfft(profile), tau_guess)
 
         result = minimize(
             lambda x: -objective_fn(*x),
