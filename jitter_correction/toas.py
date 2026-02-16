@@ -309,7 +309,7 @@ class TemplateMatchingEstimator:
 def toa_fourier(
     template: np.ndarray,
     profile: np.ndarray,
-    tol: float | np.floating = sqrt(eps),
+    tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
     noise_level: float | np.floating | None = None,
 ) -> ToaResult:
     '''
