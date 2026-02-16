@@ -224,7 +224,7 @@ class PCMatchingEstimator:
             xhats.append(pccf/ahat)
         xhats = np.array(xhats)
 
-        if noise_level is not None:
+        if noise_level is None:
             # estimate noise level from upper 1/4 of profile FFT
             sigma2hat = np.mean(np.abs(profile_fft[-n//8-1:-1])**2)/n
             sigmahat = np.sqrt(sigma2hat)
