@@ -1,7 +1,7 @@
 import numpy as np
 from collections.abc import Callable
 
-from .toas import toa_fourier
+from .toas import TemplateMatchingEstimator
 from .signal import fft_roll
 from .profile_data import ProfileData
 
@@ -22,9 +22,8 @@ def get_template(
     toas = np.empty(data.n_profiles)
 
     for i in range(n_iter):
-        for i, profile in enumerate(data.profiles):
-            result = toa_fourier(template, profile)
-            toas[i] = result.toa
+        estimator = TemplateMatchingEstimator(template)
+        toas[:] = estimator.estimate_toas(data).toa
         profiles_aligned = np.empty_like(data.profiles)
         for j, profile in enumerate(data.profiles):
             profiles_aligned[j] = fft_roll(profile, -toas[j])
@@ -42,10 +41,8 @@ def calc_dtoas(
     Calculate ΔTOAs from profiles with polynomial drift.
     '''
     profile_number = np.arange(data.n_profiles)
-    toas = np.empty(data.n_profiles)
-    for i, profile in enumerate(data.profiles):
-        result = toa_fourier(template, profile)
-        toas[i] = result.toa
+    estimator = TemplateMatchingEstimator(template)
+    toas = estimator.estimate_toas(data)
     timing_poly_coeffs = np.polyfit(profile_number, toas, poly_degree)
     timing_poly_vals = np.polyval(timing_poly_coeffs, profile_number)
     dtoas = toas - timing_poly_vals

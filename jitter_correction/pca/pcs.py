@@ -9,7 +9,7 @@ from scipy.linalg import svd
 from dataclasses import dataclass
 
 from ..signal import fft_roll
-from ..toas import toa_fourier
+from ..toas import TemplateMatchingEstimator
 from ..mixins import NpzSerializable, Hdf5Serializable
 from ..utils import get_template
 from ..profile_data import ProfileData
@@ -70,10 +70,8 @@ def extract_pcs(
     if initial_template is None:
         initial_template = get_template(data, n_iter=0)
 
-    toas = np.zeros(data.n_profiles)
-    for i, profile in enumerate(data.profiles):
-        result = toa_fourier(initial_template, profile)
-        toas[i] = result.toa
+    estimator = TemplateMatchingEstimator(initial_template)
+    toas = estimator.estimate_toas(data).toa
 
     resids = np.empty_like(data.profiles)
     if use_trend:
