@@ -3,7 +3,7 @@ from typing import NamedTuple
 from dataclasses import dataclass
 
 from .profile_data import ProfileData
-from .toas import get_toas
+from .toas import TemplateMatchingEstimator
 from .mixins import RecordContainer
 
 eps=np.finfo(np.float64).eps
@@ -86,7 +86,8 @@ def get_toas_skewness(
     `dt`:     The width of each phase bin in the profile. Sets the units of the TOA.
     `tol`:    Relative tolerance for optimization (in bins).
     '''
-    initial_results = get_toas(template, data)
+    estimator = TemplateMatchingEstimator(template)
+    initial_results = estimator.estimate_toas(data)
     skewness_coeffs = calc_skewness_coeffs(data)
     toa_corrections = np.polyval(predictor_coeffs, skewness_coeffs)
     toas_skewness = initial_results.toa - toa_corrections

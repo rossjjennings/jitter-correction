@@ -9,7 +9,7 @@ from .pulse_spec import PulseSpec
 from .profile_model import ProfileModel
 from .profile_data import ProfileData
 from .pca.pcs import PrincipalComponentModel
-from .toas import get_toas, ToaResults
+from .toas import TemplateMatchingEstimator, ToaResults
 from .skewness import calc_skewness_coeffs, get_toas_skewness
 from .pca.pcs import extract_pcs
 from .pca.gtm import get_toas_gtm, ToaGtmResults
@@ -85,7 +85,8 @@ class TemplateOnlyAnalysis(Analysis[TemplateOnlyModel, ToaResults]):
         return TemplateOnlyModel(template)
 
     def get_toas(self, model: TemplateOnlyModel, data: ProfileData) -> ToaResults:
-        return get_toas(model.template, data)
+        estimator = TemplateMatchingEstimator(model.template)
+        return estimator.estimate_toas(data)
 
 class GtmAnalysis(Analysis[PrincipalComponentModel, ToaGtmResults]):
     def __init__(self, n_pcs: int):
