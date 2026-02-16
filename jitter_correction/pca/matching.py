@@ -11,6 +11,12 @@ from ..profile_data import ProfileData
 from .pcs import PrincipalComponentModel
 from .results import ToaPcaResult, ToaPcaResults
 
+if hasattr(np, "trapezoid"):
+    # np.trapz was renamed to np.trapezoid in Numpy 2.0
+    trapezoid = np.trapezoid
+else:
+    trapezoid = np.trapz # type: ignore
+
 class PCMatchingEstimator:
     '''
     A TOA estimator based on matched filtering with a flexible profile model
@@ -35,7 +41,7 @@ class PCMatchingEstimator:
 
         template_sum = template_fft[0].real
         self.template_sum = template_sum
-        template_sqsum = 2*np.real(np.trapezoid(np.abs(template_fft)**2))/n
+        template_sqsum = 2*np.real(trapezoid(np.abs(template_fft)**2))/n
         self.template_sqsum = template_sqsum
 
         @nb.njit
@@ -58,13 +64,13 @@ class PCMatchingEstimator:
             profile_sum = profile_fft[0].real
             phase = phase_gradient*tau
             ccf_fft = np.conj(np.exp(phase)*template_fft)*profile_fft
-            ccf = 2*np.real(np.trapezoid(ccf_fft))/n
+            ccf = 2*np.real(trapezoid(ccf_fft))/n
             obj = (ccf - profile_sum*template_sum/n)**2
             obj /= (template_sqsum - template_sum**2/n)
 
             for pc_fft in pcs_fft:
                 pccf_fft = np.conj(np.exp(phase)*pc_fft)*profile_fft
-                pccf = 2*np.real(np.trapezoid(pccf_fft))/n
+                pccf = 2*np.real(trapezoid(pccf_fft))/n
                 obj += pccf**2
 
             return obj
@@ -201,7 +207,7 @@ class PCMatchingEstimator:
 
         phase = -2j*np.pi*np.fft.rfftfreq(n)
         ccf_fft = np.conj(np.exp(phase)*self.template_fft)*profile_fft
-        ccf = 2*np.real(np.trapezoid(ccf_fft))/n
+        ccf = 2*np.real(trapezoid(ccf_fft))/n
 
         ahat = (ccf - profile_sum*self.template_sum/n)
         ahat /= (self.template_sqsum - self.template_sum**2/n)
@@ -210,7 +216,7 @@ class PCMatchingEstimator:
         xhats = []
         for pc_fft in self.pcs_fft:
             pccf_fft = np.conj(np.exp(phase)*pc_fft)*profile_fft
-            pccf = 2*np.real(np.trapezoid(pccf_fft))/n
+            pccf = 2*np.real(trapezoid(pccf_fft))/n
             xhats.append(pccf/ahat)
         xhats = np.array(xhats)
 

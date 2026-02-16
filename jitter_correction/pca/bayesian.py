@@ -12,6 +12,12 @@ from ..profile_data import ProfileData
 from .pcs import PrincipalComponentModel
 from .results import ToaPcaResult, ToaPcaResults
 
+if hasattr(np, "trapezoid"):
+    # np.trapz was renamed to np.trapezoid in Numpy 2.0
+    trapezoid = np.trapezoid
+else:
+    trapezoid = np.trapz # type: ignore
+
 class PCBayesianEstimator:
     '''
     A TOA estimator based on matched filtering with a flexible profile model
@@ -40,7 +46,7 @@ class PCBayesianEstimator:
 
         template_sum = template_fft[0].real
         self.template_sum = template_sum
-        template_sqsum = 2*np.real(np.trapezoid(np.abs(template_fft)**2))/n
+        template_sqsum = 2*np.real(trapezoid(np.abs(template_fft)**2))/n
         self.template_sqsum = template_sqsum
 
         @nb.njit
@@ -65,7 +71,7 @@ class PCBayesianEstimator:
             profile_sum = profile_fft[0].real
             phase = phase_gradient*tau
             ccf_fft = np.conj(np.exp(phase)*template_fft)*profile_fft
-            ccf = 2*np.real(np.trapezoid(ccf_fft))/n
+            ccf = 2*np.real(trapezoid(ccf_fft))/n
 
             ahat = (ccf - profile_sum*template_sum/n)
             ahat /= (template_sqsum - template_sum**2/n)
@@ -98,13 +104,13 @@ class PCBayesianEstimator:
             profile_sum = profile_fft[0].real
             phase = phase_gradient*tau
             ccf_fft = np.conj(np.exp(phase)*template_fft)*profile_fft
-            ccf = 2*np.real(np.trapezoid(ccf_fft))/n
+            ccf = 2*np.real(trapezoid(ccf_fft))/n
             obj = (ccf - profile_sum*template_sum/n)**2
             obj /= (template_sqsum - template_sum**2/n)
 
             for pc_fft, eigval in zip(pcs_fft, eigvals):
                 pccf_fft = np.conj(np.exp(phase)*pc_fft)*profile_fft
-                pccf = 2*np.real(np.trapezoid(pccf_fft))/n
+                pccf = 2*np.real(trapezoid(pccf_fft))/n
                 shrinkage_factor = 1/(1 + sigma**2/(eigval*a))
                 obj += shrinkage_factor*pccf**2
                 obj += sigma**2/n*np.log(2*np.pi*eigval*a**2/n)
@@ -329,7 +335,7 @@ class PCBayesianEstimator:
         xhats = []
         for pc_fft, shrinkage_factor in zip(self.pcs_fft, shrinkage_factors):
             pccf_fft = np.conj(np.exp(phase)*pc_fft)*profile_fft
-            pccf = 2*np.real(np.trapezoid(pccf_fft))/n
+            pccf = 2*np.real(trapezoid(pccf_fft))/n
             xhats.append(shrinkage_factor*pccf/ahat)
         xhats = np.array(xhats)
 

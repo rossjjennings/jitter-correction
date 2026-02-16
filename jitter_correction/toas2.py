@@ -9,6 +9,12 @@ from collections.abc import Callable
 from .mixins import RecordType, RecordContainer
 from .profile_data import ProfileData
 
+if hasattr(np, "trapezoid"):
+    # np.trapz was renamed to np.trapezoid in Numpy 2.0
+    trapezoid = np.trapezoid
+else:
+    trapezoid = np.trapz # type: ignore
+
 @dataclass(slots=True, repr=False)
 class ToaResult(RecordType):
     '''
@@ -47,7 +53,7 @@ class TemplateMatchingEstimator:
 
         template_sum = template_fft[0].real
         self.template_sum = template_sum
-        template_sqsum = 2*np.real(np.trapezoid(np.abs(template_fft)**2))/n
+        template_sqsum = 2*np.real(trapezoid(np.abs(template_fft)**2))/n
         self.template_sqsum = template_sqsum
 
         @nb.njit
@@ -70,7 +76,7 @@ class TemplateMatchingEstimator:
             profile_sum = profile_fft[0].real
             phase = phase_gradient*tau
             ccf_fft = np.conj(np.exp(phase)*template_fft)*profile_fft
-            ccf = 2*np.real(np.trapezoid(ccf_fft))/n
+            ccf = 2*np.real(trapezoid(ccf_fft))/n
             obj = (ccf - profile_sum*template_sum/n)**2
             obj /= (template_sqsum - template_sum**2/n)
             return obj
@@ -198,11 +204,11 @@ class TemplateMatchingEstimator:
         # calculate best-fit values of a and b
         profile_fft = np.fft.rfft(profile)
         profile_sum = profile_fft[0].real
-        profile_sqsum = 2*np.real(np.trapezoid(np.abs(profile_fft)**2))/n
+        profile_sqsum = 2*np.real(trapezoid(np.abs(profile_fft)**2))/n
 
         phase = -2j*np.pi*np.fft.rfftfreq(n)
         ccf_tauhat_fft = np.conj(np.exp(phase)*self.template_fft)*profile_fft
-        ccf_tauhat = 2*np.real(np.trapezoid(ccf_tauhat_fft))/n
+        ccf_tauhat = 2*np.real(trapezoid(ccf_tauhat_fft))/n
 
         ahat = (ccf_tauhat - profile_sum*self.template_sum/n)
         ahat /= (self.template_sqsum - self.template_sum**2/n)
