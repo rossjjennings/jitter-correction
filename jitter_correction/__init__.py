@@ -15,6 +15,7 @@ from .utils import get_template, calc_dtoas
 from .skewness import skewness_function, skewness_coeff, calc_skewness_coeffs
 from .pca.pcs import extract_pcs, plot_pcs
 from .pca.score import toa_score
-from .pca.gtm import toa_gtm, toa_gtm_prior
+from .pca.matching import PCMatchingEstimator
+from .pca.bayesian import PCBayesianEstimator
 from .pca.marchenko_pastur import marchenko_pastur_cdf, marchenko_pastur_eigval
 
