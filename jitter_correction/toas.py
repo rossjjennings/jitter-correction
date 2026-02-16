@@ -11,7 +11,7 @@ import sys
 from .signal import fft_roll, rolling_sum, interp_ws
 from .profile_data import ProfileData
 from .mixins import RecordContainer
-from .utils import offpulse_window, offpulse_rms
+from .offpulse import offpulse_window, offpulse_rms
 
 eps = np.finfo(np.float64).eps
 if hasattr(np, "trapezoid"):
