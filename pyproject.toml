@@ -45,6 +45,9 @@ ipykernel = ">=6.22.0"
 ipympl = ">=0.10.0"
 pip = ">=22.0"
 
+[tool.pixi.pypi-dependencies]
+jitter-correction = {path = ".", editable = true}
+
 [tool.pixi.environments]
 default = {features = []}
 
