@@ -40,16 +40,29 @@ toml = ">=0.10.2"
 pywavelets = ">=1.2.0"
 h5py = ">=3.6.0"
 loguru = ">=0.7.3"
-ipython = ">=8.0.0"
-ipykernel = ">=6.22.0"
-ipympl = ">=0.10.0"
-pip = ">=22.0"
 
 [tool.pixi.pypi-dependencies]
 jitter-correction = {path = ".", editable = true}
 
+[tool.pixi.tasks]
+mypy = {cmd = "mypy jitter_correction"}
+type-check = {depends-on = [{task = "mypy", environment = "mypy"}]}
+
 [tool.pixi.environments]
-default = {features = []}
+default = {features = ["ipykernel"]}
+mypy = {features = ["mypy"]}
+
+[tool.pixi.feature.ipykernel.dependencies]
+ipython = "*"
+ipykernel = ">=6.22.0"
+ipympl = "*"
+
+[tool.pixi.feature.ipykernel.tasks]
+install-kernel = "python -m ipykernel install --user --name jitter-correction"
+
+[tool.pixi.feature.mypy.dependencies]
+mypy = "*"
+scipy-stubs = "*"
 
 [[tool.mypy.overrides]]
 module = ["numba.*"]
