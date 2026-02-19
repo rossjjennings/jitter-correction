@@ -10,22 +10,22 @@ from .profile_model import ProfileModel
 from .profile_data import ProfileData
 from .pca.pcs import PrincipalComponentModel
 from .toas import TemplateMatchingEstimator, ToaResults
-from .skewness import calc_skewness_coeffs, get_toas_skewness
+from .skewness import calc_skewness_coeffs, get_toas_skewness, ToaSkewnessResults
 from .pca.pcs import extract_pcs
 from .pca.gtm import get_toas_gtm, ToaGtmResults
 from .pca.score import get_toas_score, ToaScoreResults
 from .utils import get_template, calc_dtoas
 
-M = TypeVar("M", bound=Hdf5Serializable)
-T = TypeVar("T", bound=Hdf5Serializable)
+M = TypeVar("M")
+T = TypeVar("T")
 
 class Analysis(Generic[M, T], ABC):
     @abstractmethod
-    def train(data: ProfileData) -> M:
+    def train(self, data: ProfileData) -> M:
         pass
 
     @abstractmethod
-    def get_toas(model: M, data: ProfileData) -> T:
+    def get_toas(self, model: M, data: ProfileData) -> T:
         pass
 
 @dataclass
@@ -46,7 +46,7 @@ class Report(Hdf5Serializable):
 def run_analyses(
     profile_model: ProfileModel,
     analyses: dict[str, Analysis[M, T]],
-) -> dict[str, AnalysisResult[M, T]]:
+) -> Report:
     training_data = profile_model.generate_data()
     trained_models = {}
     for name, analysis in analyses.items():
@@ -112,7 +112,7 @@ class PcaScoreModel(Hdf5Serializable):
         yield self.pca_model
         yield self.coeffs
 
-class PcaScoreAnalysis(Analysis[PcaScoreModel, ToaGtmResults]):
+class PcaScoreAnalysis(Analysis[PcaScoreModel, ToaScoreResults]):
     def __init__(self, n_pcs: int):
         self.n_pcs = n_pcs
 
@@ -125,7 +125,7 @@ class PcaScoreAnalysis(Analysis[PcaScoreModel, ToaGtmResults]):
         coeffs = np.linalg.solve(scores @ scores.T, scores @ dtoas)
         return PcaScoreModel(pca_model, coeffs)
 
-    def get_toas(self, model: PcaScoreModel, data: ProfileData) -> ToaGtmResults:
+    def get_toas(self, model: PcaScoreModel, data: ProfileData) -> ToaScoreResults:
         pca_model, coeffs = model
         return get_toas_score(pca_model, coeffs, data, n_pcs=self.n_pcs)
 
@@ -138,7 +138,7 @@ class SkewnessModel(Hdf5Serializable):
         yield self.template
         yield self.predictor_coeffs
 
-class SkewnessAnalysis(Analysis[SkewnessModel, ToaResults]):
+class SkewnessAnalysis(Analysis[SkewnessModel, ToaSkewnessResults]):
     def __init__(self, n_iter: int = 2):
         self.n_iter = n_iter
 
@@ -149,6 +149,6 @@ class SkewnessAnalysis(Analysis[SkewnessModel, ToaResults]):
         predictor_coeffs = np.polyfit(skewness_coeffs, dtoas, 1)
         return SkewnessModel(template, predictor_coeffs)
 
-    def get_toas(self, model: SkewnessModel, data: ProfileData) -> ToaResults:
+    def get_toas(self, model: SkewnessModel, data: ProfileData) -> ToaSkewnessResults:
         template, predictor_coeffs = model
         return get_toas_skewness(template, predictor_coeffs, data)
