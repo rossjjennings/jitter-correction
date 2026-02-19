@@ -263,4 +263,6 @@ class RecordContainer(Generic[R]):
         A type hack: without this, the type checker can't figure out that
         subclasses of `RecordContainerAlias` define `__getattr__()`.
         '''
-        return np.array([])
+        raise AttributeError(
+            f"'RecordContainer' object has no attribute '{attr}'"
+        )
