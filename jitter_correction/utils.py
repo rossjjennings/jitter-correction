@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.random import randn
 from collections.abc import Callable
 
 from .toas import TemplateMatchingEstimator
