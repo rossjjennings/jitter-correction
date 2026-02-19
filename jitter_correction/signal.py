@@ -6,10 +6,12 @@ from numpy.exceptions import ComplexWarning
 from scipy.special import sinc
 from scipy.optimize import brent, curve_fit
 import pywt
+from collections.abc import Callable
+from typing import Any, overload
 import warnings
 import sys
 
-def fft_roll(a, shift):
+def fft_roll(a: np.ndarray, shift: float | np.floating) -> np.ndarray:
     '''
     Roll array by a given (possibly fractional) amount, in bins.
     Works by multiplying the FFT of the input array by exp(-2j*pi*shift*f)
@@ -33,7 +35,10 @@ def fft_roll(a, shift):
                 filtr[n//2] = filtr[n//2].real
             return ifft(fft(a)*filtr, n)
 
-def fft_roll_deriv(a, shift=0):
+def fft_roll_deriv(
+    a: np.ndarray,
+    shift: float | np.floating = 0,
+) -> np.ndarray:
     '''
     Derivative of fft_roll(a, shift) with respect to the shift.
     '''
@@ -41,7 +46,10 @@ def fft_roll_deriv(a, shift=0):
     phase = -2j*pi*rfftfreq(n)
     return irfft(phase*rfft(a)*np.exp(shift*phase), n)
 
-def interp_ws(signal, ts = None):
+def interp_ws(
+    signal: np.ndarray,
+    ts: np.ndarray | None = None,
+) -> Callable[[float | np.floating], np.floating]:
     '''
     Calculate the Whittaker-Shannon interpolant of a signal.
     Returns a function computing the interpolant at a point `t`.
@@ -52,12 +60,19 @@ def interp_ws(signal, ts = None):
         ts = np.arange(len(signal))
     dt = ts[1] - ts[0]
     
-    def interpolant(t):
+    def interpolant(t: float | np.floating) -> np.floating:
         return np.sum(signal*sinc((t - ts)/dt))
     
     return interpolant
 
-def eval_sin(t, amp, freq, phase, offset, cov=None):
+def eval_sin(
+    t: np.ndarray,
+    amp: float | np.floating,
+    freq: float | np.floating,
+    phase: float | np.floating,
+    offset: float | np.floating,
+    cov: np.ndarray | None = None
+) -> np.ndarray:
     '''
     Evaluate a sine function with arbitrary amplitude, frequency,
     phase, and offset from zero. Primarily useful in conjunction with
@@ -67,7 +82,12 @@ def eval_sin(t, amp, freq, phase, offset, cov=None):
     '''
     return amp * np.sin(2*pi*freq*t - phase) + offset
 
-def fit_sin(t, x, return_cov=False, **kwargs):
+def fit_sin(
+    t: np.ndarray,
+    x: np.ndarray,
+    return_cov: bool = False,
+    **kwargs,
+) -> dict[str, Any]:
     '''
     Fit a sine curve to a time series (t, x), using the frequency maximizing
     the FFT-based power spectrum as an initial guess for the frequency. 
@@ -88,7 +108,18 @@ def fit_sin(t, x, return_cov=False, **kwargs):
     if return_cov: params['cov'] = cov
     return params
 
-def periodic_sinc(n, x):
+@overload
+def periodic_sinc(n: int | np.integer, x: float | np.floating) -> np.floating:
+    ...
+
+@overload
+def periodic_sinc(n: int | np.integer, x: np.ndarray) -> np.ndarray:
+    ...
+
+def periodic_sinc(
+    n: int | np.integer,
+    x: float | np.floating | np.ndarray,
+) -> float | np.floating | np.ndarray:
     '''
     Calculate the "periodic sinc function": the Fourier transform of
     a windowed Dirac comb. Convolving this with a Nyquist sampled 
@@ -97,11 +128,22 @@ def periodic_sinc(n, x):
     over array `x` values, and returns 0-dimensional arrays on scalars.
     '''
     if n % 2 == 0:
-        return np.piecewise(x, [x % n == 0, x % n != 0], [1, lambda u: sin(pi*u)/(n*tan(pi*u/n))])
+        return np.piecewise(
+            x,
+            [x % n == 0, x % n != 0],
+            [1, lambda u: sin(pi*u)/(n*tan(pi*u/n))]
+        )
     else:
-        return np.piecewise(x, [x % n == 0, x % n != 0], [1, lambda u: sin(pi*u)/(n*sin(pi*u/n))])
+        return np.piecewise(
+            x,
+            [x % n == 0, x % n != 0],
+            [1, lambda u: sin(pi*u)/(n*sin(pi*u/n))]
+        )
 
-def interp_sinc(signal, ts = None):
+def interp_sinc(
+    signal: np.ndarray,
+    ts: np.ndarray | None = None,
+) -> Callable[[float | np.floating], np.floating]:
     '''
     Calculate the periodic Whittaker-Shannon (sinc) interpolant of a signal.
     Returns a function computing the interpolant at a point `t`.
@@ -113,12 +155,12 @@ def interp_sinc(signal, ts = None):
         ts = np.arange(n)
     dt = ts[1] - ts[0]
     
-    def interpolant(t):
+    def interpolant(t: float | np.floating) -> np.floating:
         return np.sum(signal*periodic_sinc(n, (t - ts)/dt))
     
     return interpolant
 
-def rolling_sum(arr, size):
+def rolling_sum(arr: np.ndarray, size: int | np.integer) -> np.floating:
     '''
     Calculate the sum of values in `arr` in a sliding window of length `size`,
     wrapping around at the end of the array.
@@ -127,8 +169,17 @@ def rolling_sum(arr, size):
     s = np.cumsum(arr)
     return np.array([s[(i+size)%n]-s[i]+(i+size)//n*s[-1] for i in range(n)])
 
-# Modified from code written by E. Fonseca for PulsePortraiture
-def wavelet_smooth(prof, wavelet='db8', nlevel=5, threshtype='hard', fact=1.0):
+def wavelet_smooth(
+    prof: np.ndarray,
+    wavelet: str = 'db8',
+    nlevel: int | np.integer = 5,
+    threshtype: str = 'hard',
+    fact: float | np.floating = 1.0
+) -> np.ndarray:
+    '''
+    Apply a wavelet smoothing filter to a profile.
+    Modified from code written by E. Fonseca for PulsePortraiture.
+    '''
     nbin = prof.shape[-1]
     # Translation-invariant (stationary) wavelet transform/denoising
     coeffs = np.array(pywt.swt(prof, wavelet, level=nlevel, start_level=0, axis=-1))
