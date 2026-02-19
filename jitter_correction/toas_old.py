@@ -61,7 +61,7 @@ def toa_ws(
 
     interpolant = interp_ws(ccf, lags)
     brack = (ccf_max - dt, ccf_max, ccf_max + dt)
-    toa = minimize_scalar( # type: ignore # TODO
+    toa = minimize_scalar( # type: ignore
         lambda t: -interpolant(t),
         method = 'Brent',
         bracket = brack,
@@ -119,7 +119,7 @@ def toa_fourier(
         return ccf.real
 
     brack = (ccf_max - dt, ccf_max, ccf_max + dt)
-    toa = minimize_scalar( # type: ignore # TODO
+    toa = minimize_scalar( # type: ignore
         lambda tau: -ccf_fourier(tau),
         method = 'Brent',
         bracket = brack,
@@ -167,5 +167,5 @@ def get_toas(
         func(template, profile, dt, noise_level, tol)
         for profile in data.profiles
     ]
-    records = np.rec.fromrecords(results, names=ToaResult._fields) # type: ignore # TODO
+    records = np.rec.fromrecords(results, names=ToaResult._fields) # type: ignore
     return ToaResults(records)

@@ -98,7 +98,7 @@ class PulseSpec(Serializable):
             else:
                 raise ValueError("either `width` or `fwhm` must be specified")
 
-        data = np.rec.fromarrays( # type: ignore # TODO
+        data = np.rec.fromarrays( # type: ignore
             [amplitude, loc, width, fj, modindex],
             names=['amplitude', 'loc', 'width', 'fj', 'modindex'],
         )

@@ -77,7 +77,7 @@ def toa_gtm(
         return sq_ccf
 
     brack = (ccf_max - dt, ccf_max, ccf_max + dt)
-    toa = minimize_scalar( # type: ignore # TODO
+    toa = minimize_scalar( # type: ignore
         lambda tau: -modified_squared_ccf(tau),
         method = 'Brent',
         bracket = brack,
@@ -143,7 +143,7 @@ def toa_gtm_prior(
         return sq_ccf
 
     brack = (ccf_max - dt, ccf_max, ccf_max + dt)
-    toa = minimize_scalar( # type: ignore # TODO
+    toa = minimize_scalar( # type: ignore
         lambda tau: -modified_squared_ccf(tau),
         method = 'Brent',
         bracket = brack,
