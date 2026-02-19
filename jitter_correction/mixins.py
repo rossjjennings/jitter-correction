@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 import typing
-from typing import Iterator, Self, TypeVar, Generic, Any
+from typing import Iterator, Self, TypeVar, Generic, Any, overload
 from dataclasses import dataclass, fields
 from collections.abc import Mapping
 import importlib
@@ -196,9 +196,9 @@ class RecordType(Serializable):
         record = np.rec.fromrecords(values, dtype=dtype)[()]
         return record
 
-T = TypeVar("T")
+R = TypeVar("R")
 
-class RecordContainer(Generic[T]):
+class RecordContainer(Generic[R]):
     '''
     Given a record type (class inheriting from NamedTuple), allows creating
     a container type which internally stores records of the given type in a
@@ -225,14 +225,22 @@ class RecordContainer(Generic[T]):
                 '''
                 self.data = np.rec.array(data)
 
-            def __iter__(self) -> Iterator[record_type]:
+            def __iter__(self) -> Iterator[R]:
                 '''
                 Iterate over the records stored in this container
                 '''
                 for rec in self.data:
                     yield record_type(*rec)
 
-            def __getitem__(self, key) -> record_type | Self:
+            @overload
+            def __getitem__(self, key: int) -> Self:
+                ...
+
+            @overload
+            def __getitem__(self, key: slice) -> R:
+                ...
+
+            def __getitem__(self, key: int | slice) -> R | Self:
                 '''
                 Allow slicing the array to return new container objects
                 '''
@@ -240,7 +248,7 @@ class RecordContainer(Generic[T]):
                 if item.shape == ():
                     return record_type(*item)
                 else:
-                    return cls(item)
+                    return type(self)(item)
 
             def __getattr__(self, attr):
                 '''

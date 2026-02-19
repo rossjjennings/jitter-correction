@@ -28,7 +28,7 @@ class ToaResult(RecordType):
     ampl_error: np.floating
     offset_error: np.floating
 
-@dataclass
+@dataclass(slots=True)
 class ToaResults(RecordContainer[ToaResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
@@ -169,7 +169,7 @@ class TemplateMatchingEstimator:
             sample_argmax -= n
         bracket = (sample_argmax - 1, sample_argmax, sample_argmax + 1)
 
-        result = minimize_scalar(
+        result = minimize_scalar( # type: ignore
             lambda tau: -objective_fn(tau),
             method = 'Brent',
             bracket = bracket,
@@ -182,7 +182,7 @@ class TemplateMatchingEstimator:
     def build_toa_result(
         self,
         profile: np.ndarray,
-        tauhat: float | np.floating,
+        tauhat: np.floating,
         noise_level: float | np.floating | None = None,
     ) -> ToaResult:
         '''
@@ -201,6 +201,7 @@ class TemplateMatchingEstimator:
             including parameters and their uncertainties.
         '''
         n = profile.shape[0]
+        noise_level = np.array([noise_level])[0] # convert to numpy type
 
         # calculate best-fit values of a and b
         profile_fft = np.fft.rfft(profile)

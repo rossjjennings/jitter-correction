@@ -1,5 +1,4 @@
 import numpy as np
-from numpy import pi, sin, cos, exp, log, sqrt
 from numpy.fft import fft, ifft, fftfreq, rfft, irfft, rfftfreq
 from numpy.random import randn
 from numpy.exceptions import ComplexWarning
@@ -24,10 +23,10 @@ def fft_roll(a: np.ndarray, shift: float | np.floating) -> np.ndarray:
     with warnings.catch_warnings():
         warnings.filterwarnings(action='error', category=ComplexWarning)
         try:
-            phase = -2j*pi*shift*rfftfreq(n)
+            phase = -2j*np.pi*shift*rfftfreq(n)
             return irfft(rfft(a)*np.exp(phase), n)
         except np.exceptions.ComplexWarning:
-            phase = -2j*pi*shift*fftfreq(n)
+            phase = -2j*np.pi*shift*fftfreq(n)
             filtr = np.exp(phase)
             if n % 2 == 0:
                 # Take real part of Nyquist frequency term
@@ -43,7 +42,7 @@ def fft_roll_deriv(
     Derivative of fft_roll(a, shift) with respect to the shift.
     '''
     n = a.shape[-1]
-    phase = -2j*pi*rfftfreq(n)
+    phase = -2j*np.pi*rfftfreq(n)
     return irfft(phase*rfft(a)*np.exp(shift*phase), n)
 
 def interp_ws(
@@ -80,7 +79,7 @@ def eval_sin(
     a time series (t0, x0) at points t, can use 
     `eval_sin(t, **fit_sin(t0, x0))`.
     '''
-    return amp * np.sin(2*pi*freq*t - phase) + offset
+    return amp * np.sin(2*np.pi*freq*t - phase) + offset
 
 def fit_sin(
     t: np.ndarray,
@@ -109,15 +108,15 @@ def fit_sin(
     return params
 
 @overload
-def periodic_sinc(n: int | np.integer, x: float | np.floating) -> np.floating:
+def periodic_sinc(n: int, x: float | np.floating) -> np.floating:
     ...
 
 @overload
-def periodic_sinc(n: int | np.integer, x: np.ndarray) -> np.ndarray:
+def periodic_sinc(n: int, x: np.ndarray) -> np.ndarray:
     ...
 
 def periodic_sinc(
-    n: int | np.integer,
+    n: int,
     x: float | np.floating | np.ndarray,
 ) -> float | np.floating | np.ndarray:
     '''
@@ -131,13 +130,13 @@ def periodic_sinc(
         return np.piecewise(
             x,
             [x % n == 0, x % n != 0],
-            [1, lambda u: sin(pi*u)/(n*tan(pi*u/n))]
+            [1, lambda u: np.sin(np.pi*u)/(n*np.tan(np.pi*u/n))]
         )
     else:
         return np.piecewise(
             x,
             [x % n == 0, x % n != 0],
-            [1, lambda u: sin(pi*u)/(n*sin(pi*u/n))]
+            [1, lambda u: np.sin(np.pi*u)/(n*np.sin(np.pi*u/n))]
         )
 
 def interp_sinc(
@@ -160,7 +159,7 @@ def interp_sinc(
     
     return interpolant
 
-def rolling_sum(arr: np.ndarray, size: int | np.integer) -> np.floating:
+def rolling_sum(arr: np.ndarray, size: int | np.integer) -> np.ndarray:
     '''
     Calculate the sum of values in `arr` in a sliding window of length `size`,
     wrapping around at the end of the array.

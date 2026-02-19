@@ -169,7 +169,7 @@ class PCMatchingEstimator:
             sample_argmax -= n
         bracket = (sample_argmax - 1, sample_argmax, sample_argmax + 1)
 
-        result = minimize_scalar(
+        result = minimize_scalar( # type: ignore
             lambda tau: -objective_fn(tau),
             method = 'Brent',
             bracket = bracket,

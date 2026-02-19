@@ -64,6 +64,9 @@ install-kernel = "python -m ipykernel install --user --name jitter-correction"
 mypy = "*"
 scipy-stubs = "*"
 
+[tool.mypy]
+allow_redefinition = true
+
 [[tool.mypy.overrides]]
 module = ["numba.*"]
 ignore_missing_imports = true
