@@ -198,6 +198,7 @@ class RecordType(Serializable):
 
 R = TypeVar("R", covariant=True)
 
+@dataclass(slots=True)
 class RecordContainer(Generic[R]):
     '''
     Given a record type (class inheriting from NamedTuple), allows creating
@@ -208,12 +209,20 @@ class RecordContainer(Generic[R]):
     the corresponding record type and subclassing the resulting mixin class
     (e.g., `RecordContainer[MyTuple]`).
     '''
+    data: np.recarray
+
+    def __getattr__(self, attr: str) -> np.ndarray:
+        '''
+        Get fields as individual arrays
+        '''
+        return getattr(self.data, attr)
+
     def __class_getitem__(self, record_type: type) -> type:
         '''
         Construct a mixin class representing a container for a record type
         '''
         @dataclass(slots=True)
-        class RecordContainerAlias(Serializable):
+        class RecordContainerAlias(RecordContainer, Serializable):
             '''
             A mixin representing a container for a specific record type
             '''
@@ -250,19 +259,4 @@ class RecordContainer(Generic[R]):
                 else:
                     return type(self)(item)
 
-            def __getattr__(self, attr: str) -> np.ndarray:
-                '''
-                Get fields as individual arrays
-                '''
-                return getattr(self.data, attr)
-
         return RecordContainerAlias
-
-    def __getattr__(self, attr: str) -> np.ndarray:
-        '''
-        A type hack: without this, the type checker can't figure out that
-        subclasses of `RecordContainerAlias` define `__getattr__()`.
-        '''
-        raise AttributeError(
-            f"'RecordContainer' object has no attribute '{attr}'"
-        )

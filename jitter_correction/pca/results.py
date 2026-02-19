@@ -26,4 +26,4 @@ class ToaPcaResults(RecordContainer[ToaPcaResult]):
     Represents the result of fitting for TOAs and principal component scores
     for several profiles.
     '''
-    data: np.recarray
+    pass

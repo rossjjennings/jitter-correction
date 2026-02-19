@@ -23,7 +23,7 @@ class ToaScoreResults(RecordContainer[ToaScoreResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
-    data: np.recarray
+    pass
 
 def toa_score(
     model: PrincipalComponentModel,

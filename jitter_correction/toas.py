@@ -33,7 +33,7 @@ class ToaResults(RecordContainer[ToaResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
-    data: np.recarray
+    pass
 
 class TemplateMatchingEstimator:
     '''

@@ -66,7 +66,7 @@ class ToaSkewnessResult(NamedTuple):
 
 @dataclass(slots=True)
 class ToaSkewnessResults(RecordContainer[ToaSkewnessResult]):
-    data: np.recarray
+    pass
 
 def get_toas_skewness(
     template: np.ndarray,

@@ -29,7 +29,7 @@ class ToaGtmResults(RecordContainer[ToaGtmResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
-    data: np.recarray
+    pass
 
 def toa_gtm(
     model: PrincipalComponentModel,
