@@ -8,7 +8,6 @@ from scipy.optimize import brent, curve_fit
 import pywt
 import warnings
 import sys
-eps = sys.float_info.epsilon
 
 def fft_roll(a, shift):
     '''
