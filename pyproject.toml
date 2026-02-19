@@ -54,7 +54,7 @@ mypy = {features = ["mypy"]}
 
 [tool.pixi.feature.ipykernel.dependencies]
 ipython = "*"
-ipykernel = ">=6.22.0"
+ipykernel = ">=6.22.0,<7" # v7 leads to weird plot issues with numba
 ipympl = "*"
 
 [tool.pixi.feature.ipykernel.tasks]

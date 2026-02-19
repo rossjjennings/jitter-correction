@@ -45,7 +45,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/harfbuzz-12.3.2-h6083320_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.14.6-nompi_h19486de_106.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-78.2-h33c6efd_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/ipykernel-7.2.0-pyha191276_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/ipykernel-6.31.0-pyha191276_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ipympl-0.10.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ipython-9.10.0-pyh53cf698_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ipython_pygments_lexers-1.1.1-pyhd8ed1ab_0.conda
@@ -693,6 +693,7 @@ packages:
   - libuuid >=2.41.3,<3.0a0
   - libzlib >=1.3.1,<2.0a0
   license: MIT
+  license_family: MIT
   purls: []
   size: 270705
   timestamp: 1771382710863
@@ -824,23 +825,24 @@ packages:
   purls: []
   size: 12728445
   timestamp: 1767969922681
-- conda: https://conda.anaconda.org/conda-forge/noarch/ipykernel-7.2.0-pyha191276_1.conda
-  sha256: b77ed58eb235e5ad80e742b03caeed4bbc2a2ef064cb9a2deee3b75dfae91b2a
-  md5: 8b267f517b81c13594ed68d646fd5dcb
+- conda: https://conda.anaconda.org/conda-forge/noarch/ipykernel-6.31.0-pyha191276_0.conda
+  sha256: 35477c6ca12f48c3af0cbca01f65065dcc37c4a306886d6237e309e041b8434b
+  md5: d29c9fbbd0c41a7d4fbc5629314f3b00
   depends:
+  - python
   - __linux
   - comm >=0.1.1
   - debugpy >=1.6.5
   - ipython >=7.23.1
-  - jupyter_client >=8.8.0
-  - jupyter_core >=5.1,!=6.0.*
+  - jupyter_client >=8.0.0
+  - jupyter_core >=4.12,!=5.0.*
   - matplotlib-inline >=0.1
   - nest-asyncio >=1.4
   - packaging >=22
   - psutil >=5.7
   - python >=3.10
   - pyzmq >=25
-  - tornado >=6.4.1
+  - tornado >=6.2
   - traitlets >=5.4.0
   - python
   constrains:
@@ -848,9 +850,9 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/ipykernel?source=compressed-mapping
-  size: 133644
-  timestamp: 1770566133040
+  - pkg:pypi/ipykernel?source=hash-mapping
+  size: 129645
+  timestamp: 1760967030510
 - conda: https://conda.anaconda.org/conda-forge/noarch/ipympl-0.10.0-pyhcf101f3_0.conda
   sha256: 5cb435e0fe1238b0ec4baa13d52faf4490b76bb62202e5fd5bf004e95f2cf425
   md5: abb099ef4a8ab45d4b713f2d4277f727
@@ -934,7 +936,7 @@ packages:
 - pypi: ./
   name: jitter-correction
   version: 0.2.0
-  sha256: 4a1bd098e741690c5f88224af3f251e0949de7064436aab138084eac11f03130
+  sha256: dcca83d0ded0af3b44b0a4c4e401a01120ed9ef2322da66a05ff270f720b968d
   requires_dist:
   - numpy>=1.21.3
   - scipy>=1.7.2
@@ -1322,6 +1324,7 @@ packages:
   - libgcc-ng ==15.2.0=*_18
   - libgomp 15.2.0 he0feb66_18
   license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
   purls: []
   size: 1041788
   timestamp: 1771378212382
@@ -1331,6 +1334,7 @@ packages:
   depends:
   - libgcc 15.2.0 he0feb66_18
   license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
   purls: []
   size: 27526
   timestamp: 1771378224552
@@ -1342,6 +1346,7 @@ packages:
   constrains:
   - libgfortran-ng ==15.2.0=*_18
   license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
   purls: []
   size: 27523
   timestamp: 1771378269450
@@ -1354,6 +1359,7 @@ packages:
   constrains:
   - libgfortran 15.2.0
   license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
   purls: []
   size: 2482475
   timestamp: 1771378241063
@@ -1410,6 +1416,7 @@ packages:
   depends:
   - __glibc >=2.17,<3.0.a0
   license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
   purls: []
   size: 603262
   timestamp: 1771378117851
@@ -1620,6 +1627,7 @@ packages:
   constrains:
   - libstdcxx-ng ==15.2.0=*_18
   license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
   purls: []
   size: 5852330
   timestamp: 1771378262446
@@ -1629,6 +1637,7 @@ packages:
   depends:
   - libstdcxx 15.2.0 h934c35e_18
   license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
   purls: []
   size: 27575
   timestamp: 1771378314494
@@ -2341,6 +2350,7 @@ packages:
   - __glibc >=2.17,<3.0.a0
   - python_abi 3.14.* *_cp314
   license: MIT
+  license_family: MIT
   purls:
   - pkg:pypi/librt?source=hash-mapping
   size: 76241
