@@ -63,6 +63,7 @@ install-kernel = "python -m ipykernel install --user --name jitter-correction"
 [tool.pixi.feature.mypy.dependencies]
 mypy = "*"
 scipy-stubs = "*"
+types-toml = "*"
 
 [tool.mypy]
 allow_redefinition = true

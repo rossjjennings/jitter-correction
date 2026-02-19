@@ -332,6 +332,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_h366c992_103.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/toml-0.10.2-pyhcf101f3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tornado-6.5.3-py314h5bd0f2a_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/types-toml-0.10.8.20240310-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing-extensions-4.15.0-h396c80c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing_extensions-4.15.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
@@ -936,7 +937,7 @@ packages:
 - pypi: ./
   name: jitter-correction
   version: 0.2.0
-  sha256: 59a1456379c7c6b0d9b745338de00ad2edafecd500a12f260880dac343bfda8b
+  sha256: 77a081292efa508070c5112ef5c7697a499b65cdd50be6656e8f3b4aa4cd458c
   requires_dist:
   - numpy>=1.21.3
   - scipy>=1.7.2
@@ -2602,6 +2603,16 @@ packages:
   - pkg:pypi/traitlets?source=hash-mapping
   size: 110051
   timestamp: 1733367480074
+- conda: https://conda.anaconda.org/conda-forge/noarch/types-toml-0.10.8.20240310-pyhd8ed1ab_1.conda
+  sha256: 6d4c574da215ba20eddb7f5b80ba34ac19b9f49e2e48f67169f135c6bb0e2e00
+  md5: 353b9704e4851a6f210e641d3595755f
+  depends:
+  - python >=3.9
+  license: Apache-2.0 AND MIT
+  purls:
+  - pkg:pypi/types-toml?source=hash-mapping
+  size: 18489
+  timestamp: 1733279721928
 - conda: https://conda.anaconda.org/conda-forge/noarch/typing-extensions-4.15.0-h396c80c_0.conda
   sha256: 7c2df5721c742c2a47b2c8f960e718c930031663ac1174da67c1ed5999f7938c
   md5: edd329d7d3a4ab45dcf905899a7a6115
