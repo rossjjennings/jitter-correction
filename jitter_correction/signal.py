@@ -2,6 +2,7 @@ import numpy as np
 from numpy import pi, sin, cos, exp, log, sqrt
 from numpy.fft import fft, ifft, fftfreq, rfft, irfft, rfftfreq
 from numpy.random import randn
+from numpy.exceptions import ComplexWarning
 from scipy.special import sinc
 from scipy.optimize import brent, curve_fit
 import pywt
@@ -19,20 +20,19 @@ def fft_roll(a, shift):
     If the array has more than one axis, the last axis is shifted.
     '''
     n = a.shape[-1]
-    warnings.filterwarnings(action='error', category=np.exceptions.ComplexWarning)
-    try:
-        phase = -2j*pi*shift*rfftfreq(n)
-        return irfft(rfft(a)*np.exp(phase), n)
-    except np.exceptions.ComplexWarning:
-        phase = -2j*pi*shift*fftfreq(n)
-        filtr = np.exp(phase)
-        if n % 2 == 0:
-            # Take real part of Nyquist frequency term
-            # to match behavior when a is real
-            filtr[n//2] = filtr[n//2].real
-        return ifft(fft(a)*filtr, n)
-    finally:
-        warnings.resetwarnings()
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action='error', category=ComplexWarning)
+        try:
+            phase = -2j*pi*shift*rfftfreq(n)
+            return irfft(rfft(a)*np.exp(phase), n)
+        except np.exceptions.ComplexWarning:
+            phase = -2j*pi*shift*fftfreq(n)
+            filtr = np.exp(phase)
+            if n % 2 == 0:
+                # Take real part of Nyquist frequency term
+                # to match behavior when a is real
+                filtr[n//2] = filtr[n//2].real
+            return ifft(fft(a)*filtr, n)
 
 def fft_roll_deriv(a, shift=0):
     '''
