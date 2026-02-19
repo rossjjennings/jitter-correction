@@ -936,7 +936,7 @@ packages:
 - pypi: ./
   name: jitter-correction
   version: 0.2.0
-  sha256: dcca83d0ded0af3b44b0a4c4e401a01120ed9ef2322da66a05ff270f720b968d
+  sha256: 93ce09d73d46bec551263114189f06d7440b920868a7ed7bf20ec9b42644b7ff
   requires_dist:
   - numpy>=1.21.3
   - scipy>=1.7.2
