@@ -3,7 +3,7 @@ import numba as nb
 from scipy.optimize import minimize_scalar
 from loguru import logger
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import NamedTuple, Protocol
 from collections.abc import Callable
 
 from .mixins import RecordType, RecordContainer
@@ -34,7 +34,15 @@ class ToaResults(RecordContainer[ToaResult]):
     Represents the result of fitting for TOAs for several profiles.
     '''
     data: np.recarray
- 
+
+    @property
+    def toa(self):
+        return self.data.toa
+
+    @property
+    def ampl(self):
+        return self.data.ampl
+
 class TemplateMatchingEstimator:
     '''
     A TOA estimator based on matched filtering with a template profile.

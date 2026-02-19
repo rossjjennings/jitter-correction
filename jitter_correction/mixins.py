@@ -250,7 +250,7 @@ class RecordContainer(Generic[R]):
                 else:
                     return type(self)(item)
 
-            def __getattr__(self, attr):
+            def __getattr__(self, attr: str) -> np.ndarray:
                 '''
                 Get fields as individual arrays
                 '''

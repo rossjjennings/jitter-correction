@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..profile_data import ProfileData, gen_data_from_config
+from ..profile_data import ProfileData, gen_profiles
 
 def main():
     import argparse
@@ -22,7 +22,7 @@ def main():
     
     if args.force_write:
         print(f'Writing output to {args.datafile}...')
-        data = gen_data_from_config(config)
+        data = gen_profiles(**config)
         data.save_npz(args.datafile)
     
     if args.plot:
