@@ -23,14 +23,13 @@ class ToaScoreResults(RecordContainer[ToaScoreResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
-    pass
+    data: np.recarray
 
 def toa_score(
     model: PrincipalComponentModel,
     coeffs: np.ndarray,
     profile: np.ndarray,
     n_pcs: int | np.integer | None = None,
-    dt: float = 1.,
     tol: float | np.floating = np.sqrt(eps),
 ) -> ToaScoreResult:
     '''
@@ -49,12 +48,12 @@ def toa_score(
     else:
         pcs = model.pcs
 
-    result = toa_fourier(model.template, profile, dt=dt, tol=tol)
+    result = toa_fourier(model.template, profile, tol=tol)
     initial_toa = result.toa
     ampl = result.ampl
 
-    template_shifted = fft_roll(model.template, initial_toa/dt)
-    pcs_shifted = fft_roll(pcs, initial_toa/dt)
+    template_shifted = fft_roll(model.template, initial_toa)
+    pcs_shifted = fft_roll(pcs, initial_toa)
     scores = np.dot(pcs_shifted, profile)
     correcter = np.dot(coeffs, scores)
     toa = initial_toa - correcter
@@ -66,7 +65,6 @@ def get_toas_score(
     coeffs: np.ndarray,
     data: ProfileData,
     n_pcs: int | np.integer | None = None,
-    dt: float | np.floating = 1.,
     tol: float | np.floating = np.sqrt(eps),
 ) -> ToaScoreResults:
     '''
@@ -80,7 +78,7 @@ def get_toas_score(
     `tol`:    Relative tolerance for optimization (in bins).
     '''
     results = [
-        toa_score(model, coeffs, profile, n_pcs, dt, tol)
+        toa_score(model, coeffs, profile, n_pcs, tol)
         for profile in data.profiles
     ]
     records = np.rec.fromrecords(

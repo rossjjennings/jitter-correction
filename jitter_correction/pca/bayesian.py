@@ -321,6 +321,9 @@ class PCBayesianEstimator:
             including parameters and their uncertainties.
         '''
         n = profile.shape[0]
+        ahat = np.array([ahat])[0]
+        tauhat = np.array([tauhat])[0]
+        noise_level = np.array([noise_level])[0]
 
         # calculate best-fit values of a, b, and x_i
         profile_fft = np.fft.rfft(profile)
@@ -423,7 +426,7 @@ class PCBayesianEstimator:
             tol=tol,
             noise_level=noise_level,
         )
-        result = self.build_toa_result(profile, ahat, tauhat, sigma)
+        result = self.build_toa_result(profile, ahat, tauhat, noise_level)
 
         return result
 

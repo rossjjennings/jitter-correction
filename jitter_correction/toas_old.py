@@ -33,7 +33,7 @@ class ToaResults(RecordContainer[ToaResult]):
     '''
     Represents the result of fitting for TOAs for several profiles.
     '''
-    pass
+    data: np.recarray
 
 def toa_ws(
     template: np.ndarray,
@@ -146,9 +146,9 @@ def get_toas(
     data: ProfileData,
     method: str = 'fourier',
     noise_level: float | np.floating | None = None,
-    dt: float | np.floating = 1.,
+    dt: float = 1.,
     tol: float | np.floating = sqrt(eps),
-) -> np.recarray:
+) -> ToaResults:
     '''
     Calculate TOAs for a set of profiles.
 

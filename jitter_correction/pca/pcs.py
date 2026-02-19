@@ -126,9 +126,13 @@ def plot_pcs(
     '''
     if fig is None:
         fig = plt.figure(figsize=(5.4, 4.8))
-    (spec1, spec2, spec3, spec4) = mpl.gridspec.GridSpec(
+    gs = mpl.gridspec.GridSpec(
         nrows=2, ncols=2, width_ratios=(1.0, 0.25), height_ratios=(0.35, 1.0)
     )
+    spec1 = gs[0,0]
+    spec2 = gs[0,1]
+    spec3 = gs[1,0]
+    spec4 = gs[1,1]
     ax_main = fig.add_subplot(spec3)
     ax_side = fig.add_subplot(spec4, sharey=ax_main)
     ax_side.tick_params(axis='y', which='both', labelleft=False)

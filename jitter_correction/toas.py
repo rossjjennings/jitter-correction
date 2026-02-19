@@ -182,7 +182,7 @@ class TemplateMatchingEstimator:
     def build_toa_result(
         self,
         profile: np.ndarray,
-        tauhat: np.floating,
+        tauhat: float | np.floating,
         noise_level: float | np.floating | None = None,
     ) -> ToaResult:
         '''
@@ -201,7 +201,8 @@ class TemplateMatchingEstimator:
             including parameters and their uncertainties.
         '''
         n = profile.shape[0]
-        noise_level = np.array([noise_level])[0] # convert to numpy type
+        tauhat = np.array([tauhat])[0] # convert to numpy type
+        noise_level = np.array([noise_level])[0]
 
         # calculate best-fit values of a and b
         profile_fft = np.fft.rfft(profile)

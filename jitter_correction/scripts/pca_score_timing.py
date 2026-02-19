@@ -9,7 +9,7 @@ from ..toas import toa_fourier
 from ..signal import fft_roll
 from ..pca.pcs import plot_pcs, PrincipalComponentModel
 
-ToaScoreResult = namedtuple('ToaResult', ['toa', 'ampl', 'scores'])
+ToaScoreResult = namedtuple('ToaScoreResult', ['toa', 'ampl', 'scores'])
 
 def toa_score(template, pcs, coeffs, profile, ts = None, tol = sqrt(np.finfo(np.float64).eps)):
     '''

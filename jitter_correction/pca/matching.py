@@ -204,6 +204,8 @@ class PCMatchingEstimator:
             including parameters and their uncertainties.
         '''
         n = profile.shape[0]
+        tauhat = np.array([tauhat])[0]
+        noise_level = np.array([noise_level])[0]
 
         # calculate best-fit values of a, b, and x_i
         profile_fft = np.fft.rfft(profile)
