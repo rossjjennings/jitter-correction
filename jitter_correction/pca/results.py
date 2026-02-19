@@ -2,9 +2,10 @@ import numpy as np
 from dataclasses import dataclass
 
 from ..mixins import RecordType, RecordContainer
+from ..toas import ToaResult
 
 @dataclass(slots=True, repr=False)
-class ToaPcaResult(RecordType):
+class ToaPcaResult(ToaResult):
     '''
     Represents the result of fitting for a TOA and principal component scores.
     '''

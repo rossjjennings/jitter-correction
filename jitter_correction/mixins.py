@@ -196,7 +196,7 @@ class RecordType(Serializable):
         record = np.rec.fromrecords(values, dtype=dtype)[()]
         return record
 
-R = TypeVar("R")
+R = TypeVar("R", covariant=True)
 
 class RecordContainer(Generic[R]):
     '''
