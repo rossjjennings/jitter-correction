@@ -72,8 +72,8 @@ def test_toa_recovery(
                 Sets the units of the TOA.
     `tol`:      Relative tolerance for optimization.
     '''
-    dtoas: Any = []
-    toa_errs: Any = []
+    dtoas = []
+    toa_errs = []
     for i in range(n):
         true_toa = rms_toa*randn()
         profile = fft_roll(template, true_toa/dt)
