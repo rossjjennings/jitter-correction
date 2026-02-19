@@ -35,14 +35,6 @@ class ToaResults(RecordContainer[ToaResult]):
     '''
     data: np.recarray
 
-    @property
-    def toa(self):
-        return self.data.toa
-
-    @property
-    def ampl(self):
-        return self.data.ampl
-
 class TemplateMatchingEstimator:
     '''
     A TOA estimator based on matched filtering with a template profile.

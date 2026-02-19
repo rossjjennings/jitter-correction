@@ -257,3 +257,10 @@ class RecordContainer(Generic[R]):
                 return getattr(self.data, attr)
 
         return RecordContainerAlias
+
+    def __getattr__(self, attr: str) -> np.ndarray:
+        '''
+        A type hack: without this, the type checker can't figure out that
+        subclasses of `RecordContainerAlias` define `__getattr__()`.
+        '''
+        return np.array([])
