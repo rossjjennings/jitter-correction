@@ -10,7 +10,11 @@ from .profile_model import ProfileModel
 from .profile_data import ProfileData
 from .pca.pcs import PrincipalComponentModel
 from .toas import TemplateMatchingEstimator, ToaResults
-from .skewness import calc_skewness_coeffs, get_toas_skewness, ToaSkewnessResults
+from .skewness import (
+    SkewnessRegressionEstimator,
+    ToaSkewnessResults,
+    calc_skewness_coeffs,
+)
 from .pca.pcs import extract_pcs
 from .pca.gtm import get_toas_gtm, ToaGtmResults
 from .pca.score import get_toas_score, ToaScoreResults
@@ -151,4 +155,5 @@ class SkewnessAnalysis(Analysis[SkewnessModel, ToaSkewnessResults]):
 
     def get_toas(self, model: SkewnessModel, data: ProfileData) -> ToaSkewnessResults:
         template, predictor_coeffs = model
-        return get_toas_skewness(template, predictor_coeffs, data)
+        estimator = SkewnessRegressionEstimator(template, predictor_coeffs)
+        return estimator.estimate_toas(data)

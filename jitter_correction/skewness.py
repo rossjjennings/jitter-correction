@@ -23,37 +23,57 @@ def skewness_function(profile: np.ndarray) -> np.ndarray:
     skewness = T_plus - T_minus
     return skewness
 
-def skewness_coeff(
-    lags: np.ndarray,
-    skewness: np.ndarray,
-    nlags: int | np.integer = 16,
+def calc_skewness_coeff(
+    profile: np.ndarray,
+    nlags: int | np.integer | None = None,
 ) -> np.floating:
     '''
     Approximate the coefficient of tau**3 in the expansion of the skewness
     function around the origin by fitting a fifth-degree polynomial to the
     region of width `2*nlags + 1` around the zero-lag bin and taking the
     coefficient of the cubic term.
+
+    Parameters
+    ----------
+    profile: Profile for which to calculate the skewness coefficient.
+    nlags: Number of lags to use for fitting the polynomial.
+        If not provided, will be taken as the greater of `n_bins//16` or 2.
+
+    Returns
+    -------
+    coeff: Value of the skewness coefficient.
     '''
-    inds, = np.where(lags == 0)
-    zero_lag_bin = inds[0]
+    n_bins, = profile.shape
+    if nlags is None:
+        nlags = max(n_bins//16, 2)
+    skewness_fn = skewness_function(profile)
+
+    lags = np.linspace(-n_bins + 1, n_bins - 1, 2*n_bins + 1)/n_bins
+    zero_lag_bin = n_bins - 1
     sl = slice(zero_lag_bin - nlags, zero_lag_bin + nlags + 1)
-    coeffs = np.polyfit(lags[sl], skewness[sl], 5)
+    coeffs = np.polyfit(lags[sl], skewness_fn[sl], 5)
     return coeffs[2]
 
 def calc_skewness_coeffs(
     data: ProfileData,
-    nlags: int | np.integer,
+    nlags: int | np.integer | None = None,
 ) -> np.ndarray:
     '''
     Calculate skewness coefficients for a set of profiles.
-    '''
-    n_profiles, n_bins = data.profiles.shape
-    lags = np.linspace(-n_bins + 1, n_bins - 1, 2*n_bins + 1)/n_bins
 
-    skewness_coeffs = np.empty(2*n_bins - 1)
+    Parameters
+    ----------
+    data: `ProfileData` object containing the set of profiles.
+    nlags: Number of lags to use for fitting the polynomial.
+        If not provided, will be taken as the greater of `n_bins//16` or 2.
+
+    Returns
+    -------
+    coeffs: Value of the skewness coefficient for each profile.
+    '''
+    skewness_coeffs = np.empty(data.n_profiles)
     for i, profile in enumerate(data.profiles):
-        skewness_fn = skewness_function(profile)
-        skewness_coeffs[i] = skewness_coeff(lags, skewness_fn, nlags=129)
+        skewness_coeffs[i] = calc_skewness_coeff(profile, nlags)
 
     return skewness_coeffs
 
@@ -76,9 +96,60 @@ class SkewnessRegressionEstimator:
     '''
     A TOA estimator based on the skewness coefficient
     '''
-    def __init__(self, template: np.ndarray, predictor_coeffs: np.ndarray):
+    def __init__(
+        self,
+        template: np.ndarray,
+        predictor_coeffs: np.ndarray,
+        nlags: int | np.integer | None = None,
+    ):
+        '''
+        Construct the estimator from a template and predictor coefficients.
+
+        Parameters
+        ----------
+        template: Template profile shape to use.
+        predictor_coeffs: Coefficients relating the skewness coefficient
+            to the TOA correction.
+        nlags: Number of lags to use for fitting the polynomial to determine
+            the skewness coefficient. If not provided, will be taken as the
+            greater of `n_bins//16` or 2.
+        '''
         self.tm_estimator = TemplateMatchingEstimator(template)
         self.predictor_coeffs = predictor_coeffs
+        self.nlags = nlags
+
+    def build_toa_result(
+        self,
+        initial_result: ToaResult,
+        skewness_coeff: np.floating,
+        toa_estimate: np.floating,
+    ) -> ToaSkewnessResult:
+        '''
+        Given an initial TOA result, skewness coefficient, and TOA estimate,
+        determine other values of interest and their uncertainties, and
+        construct a `ToaSkewnessResult` object.
+
+        Parameters
+        ----------
+        initial_result: `ToaResult` from template matching on this profile.
+        skewness_coeff: Skewness coefficient for this profile.
+        toa_estimate: TOA estimate for this profile.
+
+        Returns
+        -------
+        result: `ToaSkewnessResult` object containing the complete results
+            of TOA estimation,  including parameters and their uncertainties.
+        '''
+        return ToaSkewnessResult(
+            toa=toa_estimate,
+            ampl=initial_result.ampl,
+            offset=initial_result.offset,
+            noise_level=initial_result.noise_level,
+            toa_error=initial_result.toa_error,
+            ampl_error=initial_result.ampl_error,
+            offset_error=initial_result.offset_error,
+            skewness_coeff=skewness_coeff,
+        )
 
     def estimate_toa(
         self,
@@ -87,7 +158,7 @@ class SkewnessRegressionEstimator:
         noise_level: float | np.floating | None = None,
     ) -> ToaSkewnessResult:
         '''
-        Estimate a TOA using the skewness model.
+        Calculate a corrected TOA using the skewness regression model.
 
         Parameters
         ----------
@@ -101,35 +172,63 @@ class SkewnessRegressionEstimator:
         result: `ToaSkewnessResult` object containing parameter values and
             their uncertainties.
         '''
-        initial_result = estimator.estimate_toa(profile, tol, noise_level)
+        initial_result = self.tm_estimator.estimate_toa(
+            profile,
+            tol=tol,
+            noise_level=noise_level,
+        )
+        skewness_coeff = calc_skewness_coeff(profile, self.nlags)
+        toa_correction = np.polyval(self.predictor_coeffs, skewness_coeff)
+        toa_estimate = initial_result.toa - toa_correction
 
-def get_toas_skewness(
-    template: np.ndarray,
-    predictor_coeffs: np.ndarray,
-    data: ProfileData,
-    tol: float | np.floating = np.sqrt(eps),
-) -> ToaSkewnessResults:
-    '''
-    Calculate a corrected TOA using the skewness model.
+        return self.build_toa_result(
+            initial_result,
+            skewness_coeff,
+            toa_estimate,
+        )
 
-    Inputs
-    ------
-    `template`: The profile model to use for fitting
-    `predictor_coeffs`: Coefficients of the skewness to use in correction
-    `data`:   Profiles for which to calculate TOAs, as a `ProfileData` object
-    `tol`:    Relative tolerance for optimization (in bins).
-    '''
-    estimator = TemplateMatchingEstimator(template)
-    initial_results = estimator.estimate_toas(data)
-    skewness_coeffs = calc_skewness_coeffs(data)
-    toa_corrections = np.polyval(predictor_coeffs, skewness_coeffs)
-    toas_skewness = initial_results.toa - toa_corrections
+    def estimate_toas(
+        self,
+        data: ProfileData,
+        tol: float | np.floating = np.sqrt(np.finfo(np.float64).eps),
+        noise_level: float | np.floating | None = None,
+    ) -> ToaSkewnessResults:
+        '''
+        Calculate corrected TOAs for several profiles using the skewness
+        regression model.
 
-    records = np.rec.fromarrays([ # type: ignore
-            toas_skewness,
-            initial_results.ampl,
-            skewness_coeffs,
-        ],
-        names=ToaSkewnessResult._fields,
-    )
-    return records
+        Parameters
+        ----------
+        template: The profile model to use for fitting
+        predictor_coeffs: Coefficients of the skewness to use in correction
+        data: Profiles for which to calculate TOAs, as a `ProfileData` object
+        tol: Relative tolerance for optimization (in bins).
+
+        Returns
+        -------
+        result: `ToaSkewnessResult` object containing parameter values and
+            their uncertainties.
+        '''
+        initial_results = self.tm_estimator.estimate_toas(
+            data,
+            tol=tol,
+            noise_level=noise_level,
+        )
+        skewness_coeffs = calc_skewness_coeffs(data, self.nlags)
+        toa_corrections = np.polyval(self.predictor_coeffs, skewness_coeffs)
+        toa_estimates = initial_results.toa - toa_corrections
+
+        results = []
+        zipped_info = zip(initial_results, toa_estimates, skewness_coeffs)
+        for initial_result, toa_estimate, skewness_coeff in zipped_info:
+            result = self.build_toa_result(
+                initial_result,
+                skewness_coeff,
+                toa_estimate,
+            )
+            results.append(result)
+
+        records = np.rec.array(np.array(
+            [result.as_record() for result in results]
+        ))
+        return ToaSkewnessResults(records)

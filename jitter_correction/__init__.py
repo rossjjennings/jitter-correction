@@ -12,7 +12,12 @@ from .signal import fft_roll, fft_roll_deriv, wavelet_smooth
 from .toas import TemplateMatchingEstimator, toa_fourier
 from .utils import get_template, calc_dtoas
 
-from .skewness import skewness_function, skewness_coeff, calc_skewness_coeffs
+from .skewness import (
+    SkewnessRegressionEstimator,
+    skewness_function,
+    calc_skewness_coeff,
+    calc_skewness_coeffs,
+)
 from .pca.pcs import PrincipalComponentModel, extract_pcs, plot_pcs
 from .pca.score import toa_score
 from .pca.matching import PCMatchingEstimator
