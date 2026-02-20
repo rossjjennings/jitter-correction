@@ -16,7 +16,7 @@ from .skewness import (
     calc_skewness_coeffs,
 )
 from .pca.pcs import extract_pcs
-from .pca.gtm import get_toas_gtm, ToaGtmResults
+from .pca.matching import PCMatchingEstimator
 from .pca.results import ToaPcaResults
 from .pca.regression import PCRegressionEstimator
 from .utils import get_template, calc_dtoas
@@ -93,7 +93,7 @@ class TemplateOnlyAnalysis(Analysis[TemplateOnlyModel, ToaResults]):
         estimator = TemplateMatchingEstimator(model.template)
         return estimator.estimate_toas(data)
 
-class GtmAnalysis(Analysis[PrincipalComponentModel, ToaGtmResults]):
+class GtmAnalysis(Analysis[PrincipalComponentModel, ToaPcaResults]):
     def __init__(self, n_pcs: int):
         self.n_pcs = n_pcs
 
@@ -105,8 +105,9 @@ class GtmAnalysis(Analysis[PrincipalComponentModel, ToaGtmResults]):
         self,
         model: PrincipalComponentModel,
         data: ProfileData,
-    ) -> ToaGtmResults:
-        return get_toas_gtm(model, data)
+    ) -> ToaPcaResults:
+        estimator = PCMatchingEstimator(model)
+        return estimator.estimate_toas(data)
 
 @dataclass
 class PcaScoreModel(Hdf5Serializable):
