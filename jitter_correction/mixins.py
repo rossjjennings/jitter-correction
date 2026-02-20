@@ -98,7 +98,7 @@ class Hdf5Serializable:
             self.save_group(f)
 
     @classmethod
-    def from_group(cls, grp: h5py.Group):
+    def from_group(cls, grp: h5py.Group) -> Self:
         '''
         Load data from an HDF5 group and return an instance of this class.
         '''
@@ -113,7 +113,7 @@ class Hdf5Serializable:
         return cls(**fields_dict)
 
     @classmethod
-    def from_hdf5(cls, filename: str):
+    def from_hdf5(cls, filename: str) -> Self:
         with h5py.File(filename, 'r') as f:
             instance = cls.from_group(f)
         return instance
@@ -136,7 +136,7 @@ class NpzSerializable:
         np.savez(filename, **fields_dict)
 
     @classmethod
-    def from_npz(cls, filename: str):
+    def from_npz(cls, filename: str) -> Self:
         '''
         Load data from an npz file and return an instance of this class.
         '''
