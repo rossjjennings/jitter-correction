@@ -40,23 +40,20 @@ def skewness_coeff(
     coeffs = np.polyfit(lags[sl], skewness[sl], 5)
     return coeffs[2]
 
-def calc_skewness_coeffs(data: ProfileData) -> np.ndarray:
+def calc_skewness_coeffs(
+    data: ProfileData,
+    nlags: int | np.integer,
+) -> np.ndarray:
     '''
     Calculate skewness coefficients for a set of profiles.
     '''
     n_profiles, n_bins = data.profiles.shape
-    lags = np.empty(2*n_bins - 1)
-    lags[n_bins-1:] = np.linspace(0, 1, n_bins)
-    lags[:n_bins-1] = -np.linspace(0, 1, n_bins)[:0:-1]
+    lags = np.linspace(-n_bins + 1, n_bins - 1, 2*n_bins + 1)/n_bins
 
-    skewness_fns = np.empty((n_profiles, 2*n_bins - 1))
+    skewness_coeffs = np.empty(2*n_bins - 1)
     for i, profile in enumerate(data.profiles):
         skewness_fn = skewness_function(profile)
-        skewness_fns[i] = skewness_fn
-    skewness_coeffs = np.array([
-        skewness_coeff(lags, skewness_fn, nlags=129)
-        for skewness_fn in skewness_fns
-    ])
+        skewness_coeffs[i] = skewness_coeff(lags, skewness_fn, nlags=129)
 
     return skewness_coeffs
 
@@ -104,7 +101,7 @@ class SkewnessRegressionEstimator:
         result: `ToaSkewnessResult` object containing parameter values and
             their uncertainties.
         '''
-        pass
+        initial_result = estimator.estimate_toa(profile, tol, noise_level)
 
 def get_toas_skewness(
     template: np.ndarray,
