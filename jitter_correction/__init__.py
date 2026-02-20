@@ -19,7 +19,7 @@ from .skewness import (
     calc_skewness_coeffs,
 )
 from .pca.pcs import PrincipalComponentModel, extract_pcs, plot_pcs
-from .pca.score import toa_score
+from .pca.regression import toa_score
 from .pca.matching import PCMatchingEstimator
 from .pca.bayesian import PCBayesianEstimator
 from .pca.marchenko_pastur import marchenko_pastur_cdf, marchenko_pastur_eigval

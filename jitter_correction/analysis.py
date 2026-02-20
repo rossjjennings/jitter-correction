@@ -17,7 +17,7 @@ from .skewness import (
 )
 from .pca.pcs import extract_pcs
 from .pca.gtm import get_toas_gtm, ToaGtmResults
-from .pca.score import get_toas_score, ToaScoreResults
+from .pca.regression import get_toas_score, ToaScoreResults
 from .utils import get_template, calc_dtoas
 
 M = TypeVar("M")
