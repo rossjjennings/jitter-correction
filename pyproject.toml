@@ -27,6 +27,9 @@ jc-template-stats = "jitter_correction.scripts.template_stats:main"
 jc-pca-timing = "jitter_correction.scripts.pca_timing:main"
 jc-pca-score-timing = "jitter_correction.scripts.pca_score_timing:main"
 
+[tool.setuptools.package-data]
+jitter_correction = ["py.typed"]
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
