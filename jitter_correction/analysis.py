@@ -17,7 +17,8 @@ from .skewness import (
 )
 from .pca.pcs import extract_pcs
 from .pca.gtm import get_toas_gtm, ToaGtmResults
-from .pca.regression import get_toas_score, ToaScoreResults
+from .pca.results import ToaPcaResults
+from .pca.regression import PCRegressionEstimator
 from .utils import get_template, calc_dtoas
 
 M = TypeVar("M")
@@ -116,7 +117,7 @@ class PcaScoreModel(Hdf5Serializable):
         yield self.pca_model
         yield self.coeffs
 
-class PcaScoreAnalysis(Analysis[PcaScoreModel, ToaScoreResults]):
+class PcaScoreAnalysis(Analysis[PcaScoreModel, ToaPcaResults]):
     def __init__(self, n_pcs: int):
         self.n_pcs = n_pcs
 
@@ -129,9 +130,10 @@ class PcaScoreAnalysis(Analysis[PcaScoreModel, ToaScoreResults]):
         coeffs = np.linalg.solve(scores @ scores.T, scores @ dtoas)
         return PcaScoreModel(pca_model, coeffs)
 
-    def get_toas(self, model: PcaScoreModel, data: ProfileData) -> ToaScoreResults:
+    def get_toas(self, model: PcaScoreModel, data: ProfileData) -> ToaPcaResults:
         pca_model, coeffs = model
-        return get_toas_score(pca_model, coeffs, data, n_pcs=self.n_pcs)
+        estimator = PCRegressionEstimator(pca_model, coeffs)
+        return estimator.estimate_toas(data)
 
 @dataclass
 class SkewnessModel(Hdf5Serializable):
