@@ -16,9 +16,10 @@ from .skewness import (
     calc_skewness_coeffs,
 )
 from .pca.pcs import extract_pcs
-from .pca.matching import PCMatchingEstimator
 from .pca.results import ToaPcaResults
 from .pca.regression import PCRegressionEstimator
+from .pca.matching import PCMatchingEstimator
+from .pca.bayesian import PCBayesianEstimator
 from .utils import get_template, calc_dtoas
 
 M = TypeVar("M", bound=Hdf5Serializable)
@@ -110,6 +111,22 @@ class PCMatchingAnalysis(Analysis):
         data: ProfileData,
     ) -> ToaPcaResults:
         estimator = PCMatchingEstimator(model)
+        return estimator.estimate_toas(data)
+
+class PCBayesianAnalysis(Analysis):
+    def __init__(self, n_pcs: int):
+        self.n_pcs = n_pcs
+
+    def train(self, training_data: ProfileData) -> PrincipalComponentModel:
+        pca_model, scores, dtoas = extract_pcs(training_data, n_pcs=self.n_pcs)
+        return pca_model
+
+    def get_toas(
+        self,
+        model: PrincipalComponentModel,
+        data: ProfileData,
+    ) -> ToaPcaResults:
+        estimator = PCBayesianEstimator(model)
         return estimator.estimate_toas(data)
 
 @dataclass
