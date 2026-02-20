@@ -201,15 +201,46 @@ R = TypeVar("R", covariant=True)
 @dataclass(slots=True)
 class RecordContainer(Generic[R]):
     '''
-    Given a record type (class inheriting from NamedTuple), allows creating
-    a container type which internally stores records of the given type in a
-    record array, and allows iterating, slicing, and accessing fields by name.
+    Given a record type (i.e., a class whose only fields are Numpy scalars or
+    arrays), allows creating a container type which internally stores records
+    of the given type in a structured array, and allows iterating, slicing,
+    and accessing fields by name.
 
     Creating the container type is done by indexing `RecordContainer` with
     the corresponding record type and subclassing the resulting mixin class
     (e.g., `RecordContainer[MyTuple]`).
     '''
     data: np.recarray
+
+    def __init__(self, data: np.ndarray) -> None:
+        '''
+        Transform the input data into a record array
+        '''
+        self.data = np.rec.array(data)
+
+    def __iter__(self) -> Iterator[R]:
+        '''
+        Iterate over the records stored in this container
+        '''
+        # Not implemented for the base class; subclasses should inherit the
+        # implementation from a particular RecordContainerAlias. This stub
+        # is here for type checking reasons.
+        raise NotImplementedError()
+
+    @overload
+    def __getitem__(self, key: int) -> Self:
+        ...
+    @overload
+    def __getitem__(self, key: slice) -> R:
+        ...
+    def __getitem__(self, key: int | slice) -> R | Self:
+        '''
+        Allow slicing the array to return new container objects
+        '''
+        # Not implemented for the base class; subclasses should inherit the
+        # implementation from a particular RecordContainerAlias. This stub
+        # is here for type checking reasons.
+        raise NotImplementedError()
 
     def __getattr__(self, attr: str) -> np.ndarray:
         '''
@@ -226,13 +257,16 @@ class RecordContainer(Generic[R]):
             '''
             A mixin representing a container for a specific record type
             '''
+            # Mypy can't tell that subclasses actually inherit from this class
+            # and not just the base RecordContainer. This is why we need stubs
+            # there for the methods defined here to type-check correctly.
             data: np.recarray
 
             def __init__(self, data: np.ndarray) -> None:
                 '''
                 Transform the input data into a record array
                 '''
-                self.data = np.rec.array(data)
+                super().__init__(data)
 
             def __iter__(self) -> Iterator[R]:
                 '''
@@ -244,11 +278,9 @@ class RecordContainer(Generic[R]):
             @overload
             def __getitem__(self, key: int) -> Self:
                 ...
-
             @overload
             def __getitem__(self, key: slice) -> R:
                 ...
-
             def __getitem__(self, key: int | slice) -> R | Self:
                 '''
                 Allow slicing the array to return new container objects
