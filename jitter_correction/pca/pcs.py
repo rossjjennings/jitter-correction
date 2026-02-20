@@ -35,6 +35,18 @@ class PrincipalComponentModel(NpzSerializable, Hdf5Serializable):
     pcs: np.ndarray
     eigvals: np.ndarray
 
+    def truncate(self, n_pcs: int | np.integer) -> PrincipalComponentModel:
+        '''
+        Return a new `PrincipalComponentModel` with a truncated list of
+        principal components and eigenvalues.
+        '''
+        return PrincipalComponentModel(
+            phase=self.phase,
+            template=self.template,
+            pcs=self.pcs[:n_pcs],
+            eigvals=self.eigvals[:n_pcs],
+        )
+
 def extract_pcs(
         data: ProfileData,
         n_pcs: int | np.integer,
