@@ -21,8 +21,8 @@ from .pca.results import ToaPcaResults
 from .pca.regression import PCRegressionEstimator
 from .utils import get_template, calc_dtoas
 
-M = TypeVar("M")
-T = TypeVar("T")
+M = TypeVar("M", bound=Hdf5Serializable)
+T = TypeVar("T", bound=Hdf5Serializable)
 
 class Analysis(Generic[M, T], ABC):
     @abstractmethod
