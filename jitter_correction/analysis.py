@@ -78,22 +78,22 @@ def run_analyses(
     )
 
 @dataclass
-class TemplateOnlyModel(Hdf5Serializable):
+class TemplateMatchingModel(Hdf5Serializable):
     template: np.ndarray
 
-class TemplateOnlyAnalysis(Analysis[TemplateOnlyModel, ToaResults]):
+class TemplateMatchingAnalysis(Analysis[TemplateMatchingModel, ToaResults]):
     def __init__(self, n_iter: int = 2):
         self.n_iter = n_iter
 
-    def train(self, data: ProfileData) -> TemplateOnlyModel:
+    def train(self, data: ProfileData) -> TemplateMatchingModel:
         template = get_template(data, n_iter=self.n_iter)
-        return TemplateOnlyModel(template)
+        return TemplateMatchingModel(template)
 
-    def get_toas(self, model: TemplateOnlyModel, data: ProfileData) -> ToaResults:
+    def get_toas(self, model: TemplateMatchingModel, data: ProfileData) -> ToaResults:
         estimator = TemplateMatchingEstimator(model.template)
         return estimator.estimate_toas(data)
 
-class GtmAnalysis(Analysis[PrincipalComponentModel, ToaPcaResults]):
+class PCMatchingAnalysis(Analysis[PrincipalComponentModel, ToaPcaResults]):
     def __init__(self, n_pcs: int):
         self.n_pcs = n_pcs
 
@@ -110,7 +110,7 @@ class GtmAnalysis(Analysis[PrincipalComponentModel, ToaPcaResults]):
         return estimator.estimate_toas(data)
 
 @dataclass
-class PcaScoreModel(Hdf5Serializable):
+class PCRegressionModel(Hdf5Serializable):
     pca_model: PrincipalComponentModel
     coeffs: np.ndarray
 
@@ -118,26 +118,26 @@ class PcaScoreModel(Hdf5Serializable):
         yield self.pca_model
         yield self.coeffs
 
-class PcaScoreAnalysis(Analysis[PcaScoreModel, ToaPcaResults]):
+class PCRegressionAnalysis(Analysis[PCRegressionModel, ToaPcaResults]):
     def __init__(self, n_pcs: int):
         self.n_pcs = n_pcs
 
-    def train(self, data: ProfileData) -> PcaScoreModel:
+    def train(self, data: ProfileData) -> PCRegressionModel:
         pca_model, scores, dtoas = extract_pcs(
             data,
             n_pcs=self.n_pcs,
             use_trend=False,
         )
         coeffs = np.linalg.solve(scores @ scores.T, scores @ dtoas)
-        return PcaScoreModel(pca_model, coeffs)
+        return PCRegressionModel(pca_model, coeffs)
 
-    def get_toas(self, model: PcaScoreModel, data: ProfileData) -> ToaPcaResults:
+    def get_toas(self, model: PCRegressionModel, data: ProfileData) -> ToaPcaResults:
         pca_model, coeffs = model
         estimator = PCRegressionEstimator(pca_model, coeffs)
         return estimator.estimate_toas(data)
 
 @dataclass
-class SkewnessModel(Hdf5Serializable):
+class SkewnessRegressionModel(Hdf5Serializable):
     template: np.ndarray
     predictor_coeffs: np.ndarray
 
@@ -145,18 +145,21 @@ class SkewnessModel(Hdf5Serializable):
         yield self.template
         yield self.predictor_coeffs
 
-class SkewnessAnalysis(Analysis[SkewnessModel, ToaSkewnessResults]):
+class SkewnessRegressionAnalysis(Analysis[SkewnessRegressionModel, ToaSkewnessResults]):
     def __init__(self, n_iter: int = 2):
         self.n_iter = n_iter
 
-    def train(self, data: ProfileData) -> SkewnessModel:
+    def train(self, data: ProfileData) -> SkewnessRegressionModel:
         template = get_template(data, n_iter=self.n_iter)
         dtoas = calc_dtoas(template, data)
         skewness_coeffs = calc_skewness_coeffs(data)
         predictor_coeffs = np.polyfit(skewness_coeffs, dtoas, 1)
-        return SkewnessModel(template, predictor_coeffs)
+        return SkewnessRegressionModel(template, predictor_coeffs)
 
-    def get_toas(self, model: SkewnessModel, data: ProfileData) -> ToaSkewnessResults:
+    def get_toas(
+        self, model: SkewnessRegressionModel,
+        data: ProfileData,
+    ) -> ToaSkewnessResults:
         template, predictor_coeffs = model
         estimator = SkewnessRegressionEstimator(template, predictor_coeffs)
         return estimator.estimate_toas(data)
