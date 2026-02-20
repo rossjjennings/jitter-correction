@@ -228,10 +228,10 @@ class RecordContainer(Generic[R]):
         raise NotImplementedError()
 
     @overload
-    def __getitem__(self, key: int) -> Self:
+    def __getitem__(self, key: int) -> R:
         ...
     @overload
-    def __getitem__(self, key: slice) -> R:
+    def __getitem__(self, key: slice) -> Self:
         ...
     def __getitem__(self, key: int | slice) -> R | Self:
         '''
@@ -276,10 +276,10 @@ class RecordContainer(Generic[R]):
                     yield record_type(*rec)
 
             @overload
-            def __getitem__(self, key: int) -> Self:
+            def __getitem__(self, key: int) -> R:
                 ...
             @overload
-            def __getitem__(self, key: slice) -> R:
+            def __getitem__(self, key: slice) -> Self:
                 ...
             def __getitem__(self, key: int | slice) -> R | Self:
                 '''
