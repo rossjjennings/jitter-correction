@@ -81,7 +81,7 @@ def run_analyses(
 class TemplateMatchingModel(Hdf5Serializable):
     template: np.ndarray
 
-class TemplateMatchingAnalysis(Analysis[TemplateMatchingModel, ToaResults]):
+class TemplateMatchingAnalysis(Analysis):
     def __init__(self, n_iter: int = 2):
         self.n_iter = n_iter
 
@@ -89,11 +89,14 @@ class TemplateMatchingAnalysis(Analysis[TemplateMatchingModel, ToaResults]):
         template = get_template(data, n_iter=self.n_iter)
         return TemplateMatchingModel(template)
 
-    def get_toas(self, model: TemplateMatchingModel, data: ProfileData) -> ToaResults:
+    def get_toas(
+        self,
+        model: TemplateMatchingModel, data: ProfileData
+    ) -> ToaResults:
         estimator = TemplateMatchingEstimator(model.template)
         return estimator.estimate_toas(data)
 
-class PCMatchingAnalysis(Analysis[PrincipalComponentModel, ToaPcaResults]):
+class PCMatchingAnalysis(Analysis):
     def __init__(self, n_pcs: int):
         self.n_pcs = n_pcs
 
@@ -118,7 +121,7 @@ class PCRegressionModel(Hdf5Serializable):
         yield self.pca_model
         yield self.coeffs
 
-class PCRegressionAnalysis(Analysis[PCRegressionModel, ToaPcaResults]):
+class PCRegressionAnalysis(Analysis):
     def __init__(self, n_pcs: int):
         self.n_pcs = n_pcs
 
@@ -131,7 +134,10 @@ class PCRegressionAnalysis(Analysis[PCRegressionModel, ToaPcaResults]):
         coeffs = np.linalg.solve(scores @ scores.T, scores @ dtoas)
         return PCRegressionModel(pca_model, coeffs)
 
-    def get_toas(self, model: PCRegressionModel, data: ProfileData) -> ToaPcaResults:
+    def get_toas(
+        self,
+        model: PCRegressionModel, data: ProfileData
+    ) -> ToaPcaResults:
         pca_model, coeffs = model
         estimator = PCRegressionEstimator(pca_model, coeffs)
         return estimator.estimate_toas(data)
@@ -145,7 +151,7 @@ class SkewnessRegressionModel(Hdf5Serializable):
         yield self.template
         yield self.predictor_coeffs
 
-class SkewnessRegressionAnalysis(Analysis[SkewnessRegressionModel, ToaSkewnessResults]):
+class SkewnessRegressionAnalysis(Analysis):
     def __init__(self, n_iter: int = 2):
         self.n_iter = n_iter
 
