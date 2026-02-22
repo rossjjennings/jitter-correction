@@ -24,3 +24,5 @@ from .pca.matching import PCMatchingEstimator
 from .pca.bayesian import PCBayesianEstimator
 from .pca.marchenko_pastur import marchenko_pastur_cdf, marchenko_pastur_eigval
 
+from . import analysis
+
