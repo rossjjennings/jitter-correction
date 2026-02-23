@@ -44,7 +44,7 @@ def calc_dtoas(
     profile_number = np.arange(data.n_profiles)
     estimator = TemplateMatchingEstimator(template)
     toas = estimator.estimate_toas(data).toa
-    timing_poly_coeffs = np.polyfit(profile_number, toas, poly_degree) # type: ignore
+    timing_poly_coeffs = np.polyfit(profile_number, toas, poly_degree)
     timing_poly_vals = np.polyval(timing_poly_coeffs, profile_number)
     dtoas = toas - timing_poly_vals
 
