@@ -28,7 +28,7 @@ def toa_score(template, pcs, coeffs, profile, ts = None, tol = sqrt(np.finfo(np.
     dt = float(ts[1] - ts[0])
     k = len(pcs)
 
-    result = toa_fourier(template, profile, dt=dt, tol=tol)
+    result = toa_fourier(template, profile, tol=tol)
     initial_toa = result.toa
     ampl = result.ampl
 
