@@ -193,7 +193,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-ng-2.3.3-hceb46e0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: ./
-  mypy:
+  type-check:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
     indexes:
@@ -937,7 +937,7 @@ packages:
 - pypi: ./
   name: jitter-correction
   version: 0.2.0
-  sha256: 9b14779ad0072fa051832bd6ee9f19bc6b519126d4ff7101a4429290a48323d5
+  sha256: 8c087379171301418c2d53a96f354fdcb42fb1631769b49af6fc59b2e2c9fd4f
   requires_dist:
   - numpy>=1.23.2
   - scipy>=1.9.2

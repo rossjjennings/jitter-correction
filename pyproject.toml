@@ -49,11 +49,11 @@ jitter-correction = {path = ".", editable = true}
 
 [tool.pixi.tasks]
 mypy = {cmd = "mypy jitter_correction"}
-type-check = {depends-on = [{task = "mypy", environment = "mypy"}]}
+type-check = {depends-on = [{task = "mypy", environment = "type-check"}]}
 
 [tool.pixi.environments]
 default = {features = ["ipykernel"]}
-mypy = {features = ["mypy"]}
+type-check = {features = ["type-check"]}
 
 [tool.pixi.feature.ipykernel.dependencies]
 ipython = "*"
@@ -63,7 +63,7 @@ ipympl = "*"
 [tool.pixi.feature.ipykernel.tasks]
 install-kernel = "python -m ipykernel install --user --name jitter-correction"
 
-[tool.pixi.feature.mypy.dependencies]
+[tool.pixi.feature.type-check.dependencies]
 mypy = "*"
 scipy-stubs = "*"
 types-toml = "*"
