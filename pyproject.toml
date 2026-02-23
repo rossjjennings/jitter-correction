@@ -8,7 +8,7 @@ version = "0.2.0"
 authors = [
     {name = "Ross Jennings", email = "ross.jennings@nanograv.org"},
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11" # needed for Self type
 dependencies = [
     "numpy>=1.21.3",
     "scipy>=1.7.2",
