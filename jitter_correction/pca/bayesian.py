@@ -328,7 +328,7 @@ class PCBayesianEstimator:
         # calculate best-fit values of a, b, and x_i
         profile_fft = np.fft.rfft(profile)
         profile_sum = profile_fft[0].real
-        phase = -2j*np.pi*np.fft.rfftfreq(n)
+        phase = -2j*np.pi*tauhat*np.fft.rfftfreq(n)
 
         if noise_level is None:
             # estimate noise level from upper 1/4 of profile FFT

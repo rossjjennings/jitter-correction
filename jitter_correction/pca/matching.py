@@ -211,7 +211,8 @@ class PCMatchingEstimator:
         profile_fft = np.fft.rfft(profile)
         profile_sum = profile_fft[0].real
 
-        phase = -2j*np.pi*np.fft.rfftfreq(n)
+        logger.debug("Multiplying by tauhat")
+        phase = -2j*np.pi*tauhat*np.fft.rfftfreq(n)
         ccf_fft = np.conj(np.exp(phase)*self.template_fft)*profile_fft
         ccf = 2*np.real(trapezoid(ccf_fft))/n
 

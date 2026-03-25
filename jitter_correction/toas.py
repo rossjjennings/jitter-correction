@@ -209,7 +209,7 @@ class TemplateMatchingEstimator:
         profile_sum = profile_fft[0].real
         profile_sqsum = 2*np.real(trapezoid(np.abs(profile_fft)**2))/n
 
-        phase = -2j*np.pi*np.fft.rfftfreq(n)
+        phase = -2j*np.pi*tauhat*np.fft.rfftfreq(n)
         ccf_tauhat_fft = np.conj(np.exp(phase)*self.template_fft)*profile_fft
         ccf_tauhat = 2*np.real(trapezoid(ccf_tauhat_fft))/n
 

@@ -98,11 +98,16 @@ class TemplateMatchingAnalysis(Analysis):
         return estimator.estimate_toas(data)
 
 class PCMatchingAnalysis(Analysis):
-    def __init__(self, n_pcs: int):
+    def __init__(self, n_pcs: int, use_trend: bool = True):
         self.n_pcs = n_pcs
+        self.use_trend = use_trend
 
     def train(self, training_data: ProfileData) -> PrincipalComponentModel:
-        pca_model, scores, dtoas = extract_pcs(training_data, n_pcs=self.n_pcs)
+        pca_model, scores, dtoas = extract_pcs(
+            training_data,
+            n_pcs=self.n_pcs,
+            use_trend=self.use_trend,
+        )
         return pca_model
 
     def get_toas(
