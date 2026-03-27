@@ -82,50 +82,40 @@ def extract_pcs(
     if initial_template is None:
         initial_template = get_template(data, n_iter=0)
 
+    # Compute basic template matching TOAs
     estimator = TemplateMatchingEstimator(initial_template)
     toas = estimator.estimate_toas(data).toa
 
-    resids = np.empty_like(data.profiles)
-    if use_trend:
-        trend_coeffs = np.polyfit(data.profile_number, toas, 1)
-        trend = np.polyval(trend_coeffs, data.profile_number)
+    # Fit polynomial trend (if use_trend=False, this is only used for dtoas)
+    trend_coeffs = np.polyfit(data.profile_number, toas, 1)
+    trend = np.polyval(trend_coeffs, data.profile_number)
 
-        profiles_aligned = np.empty_like(data.profiles)
-        for j, profile in enumerate(data.profiles):
+    # Align profiles
+    profiles_aligned = np.empty_like(data.profiles)
+    for j, profile in enumerate(data.profiles):
+        if use_trend:
             profiles_aligned[j] = fft_roll(profile, -trend[j])
-
-        template = np.mean(profiles_aligned, axis=0)
-        for j, profile in enumerate(profiles_aligned):
-            ampl = np.dot(profile, template)/np.dot(template, template)
-            resids[j] = profile - ampl*template
-        u, s, pcs = svd(resids, full_matrices=return_all)
-        if not return_all:
-            u, s, pcs = u[:,:n_pcs], s[:n_pcs], pcs[:n_pcs,:]
-
-        scores = np.dot(pcs, profiles_aligned.T)
-        dtoas = toas - trend
-    else:
-        profiles_aligned = np.empty_like(data.profiles)
-        for j, profile in enumerate(data.profiles):
+        else:
             profiles_aligned[j] = fft_roll(profile, -toas[j])
 
-        template = np.mean(profiles_aligned, axis=0)
-        for j, profile in enumerate(profiles_aligned):
-            ampl = np.dot(profile, template)/np.dot(template, template)
-            resids[j] = profile - ampl*template
-        u, s, pcs = svd(resids, full_matrices=return_all)
-        if not return_all:
-            u, s, pcs = u[:,:n_pcs], s[:n_pcs], pcs[:n_pcs,:]
-        sgvals = s**2/data.n_profiles
+    # Compute profile residuals
+    resids = np.empty_like(data.profiles)
+    template = np.mean(profiles_aligned, axis=0)
+    for j, profile in enumerate(profiles_aligned):
+        ampl = np.dot(profile, template)/np.dot(template, template)
+        resids[j] = profile - ampl*template
 
-        # Trend used only for computing ΔTOAs
-        trend_coeffs = np.polyfit(data.profile_number, toas, 1)
-        trend = np.polyval(trend_coeffs, data.profile_number)
-        scores = np.dot(pcs, profiles_aligned.T)
-        dtoas = toas - trend
+    # Find principal components using Scipy SVD
+    u, s, pcs = svd(resids, full_matrices=return_all)
+    if not return_all:
+        u, s, pcs = u[:,:n_pcs], s[:n_pcs], pcs[:n_pcs,:]
 
+    # Compute return values
+    scores = np.dot(pcs, profiles_aligned.T)
+    dtoas = toas - trend
     eigvals = s**2/data.n_profiles
     model = PrincipalComponentModel(data.phase, template, pcs, eigvals)
+
     return model, scores, dtoas
 
 def plot_pcs(
