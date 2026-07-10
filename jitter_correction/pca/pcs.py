@@ -192,7 +192,7 @@ def extract_pcs(
     dtoas = toas - trend
     model = PrincipalComponentModel(data.phase, template, pcs, eigvals)
 
-    return model, scores, dtoas, bic_vals
+    return model, scores, dtoas
 
 def plot_pcs(
         model: PrincipalComponentModel,
