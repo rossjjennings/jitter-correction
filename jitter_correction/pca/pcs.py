@@ -9,7 +9,7 @@ from scipy import linalg
 from dataclasses import dataclass
 from loguru import logger
 
-from ..signal import fft_roll
+from ..signal import fft_roll, wavelet_smooth
 from ..toas import TemplateMatchingEstimator
 from ..mixins import NpzSerializable, Hdf5Serializable
 from ..utils import get_template
@@ -50,6 +50,41 @@ class PrincipalComponentModel(NpzSerializable, Hdf5Serializable):
             template=self.template,
             pcs=self.pcs[:n_pcs],
             eigvals=self.eigvals[:n_pcs],
+        )
+
+    def smooth(
+        self,
+        wavelet: str = 'db8',
+        nlevel: int | np.integer = 5,
+        threshtype: str = 'hard',
+        fact: float | np.floating = 1.0,
+    ) -> PrincipalComponentModel:
+        '''
+        Uniformly apply a wavelet smoothing filter to the template and all
+        principal components.
+        '''
+        smoothed_template = wavelet_smooth(
+            self.template,
+            wavelet=wavelet,
+            nlevel=nlevel,
+            threshtype=threshtype,
+            fact=fact,
+        )
+        smoothed_pcs = np.stack([
+            wavelet_smooth(
+                pc,
+                wavelet=wavelet,
+                nlevel=nlevel,
+                threshtype=threshtype,
+                fact=fact,
+            )
+            for pc in self.pcs
+        ])
+        return PrincipalComponentModel(
+            phase=self.phase,
+            template=smoothed_template,
+            pcs=smoothed_pcs,
+            eigvals=self.eigvals,
         )
 
 def extract_pcs(
