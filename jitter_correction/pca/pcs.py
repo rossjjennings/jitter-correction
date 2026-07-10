@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from scipy.linalg import svd
+from scipy import linalg
 from dataclasses import dataclass
 
 from ..signal import fft_roll
@@ -53,6 +53,8 @@ def extract_pcs(
         initial_template: np.ndarray | None = None,
         return_all: bool = False,
         use_trend: bool | np.bool_ = True,
+        trend_order: int | np.integer = 1,
+        remove_baseline: bool | np.bool_ = True,
     ) -> tuple[PrincipalComponentModel, np.ndarray, np.ndarray]:
     '''
     Extract a template and principal components from a set of profiles.
@@ -61,23 +63,29 @@ def extract_pcs(
 
     Inputs
     ------
-    data:       ProfileData object containing the profiles.
-    n_pcs:      The number of principal components to use in the model.
-    n_iter:     The number of iterations to perform.
+    data: ProfileData object containing the profiles.
+    n_pcs: The number of principal components to use in the model.
+    n_iter: The number of iterations to perform.
     initial_template: The initial template (see above).
     return_all: Return all principal components (instead of the first `n_pcs`).
-    use_trend:  If `False`, align profiles using their individual TOAs,
-                ignoring n_iter. If `True`, align using a linear trend (default).
+    use_trend: If `False`, align profiles using their individual TOAs,
+        If `True` (the default), align using a polynomial trend.
+    trend_order: Degree of the trend polynomial to be fit. The trend is always
+        used to calculate the dtoas. If `use_trend` is `True`, it is also
+        used to align the profiles.
+    remove_baseline: If `True`, fit and subtract a constant offset, in addition
+        to a component proportional to the (shifted) template, when calculating
+        profile residuals.
 
     Outputs
     -------
-    model:      PrincipalComponentModel object containing the template,
-                principal components, and eigenvalues extracted from the data.
-    scores:     Scores for each profile and each principal component.
-                Shape is `(k, n)`, where `k` is the number of principal
-                components and `n` is the number of profiles.
-    dtoas:      Differences between the estimated TOAs and the best-fit
-                polynomial trend.
+    model: PrincipalComponentModel object containing the template,
+        principal components, and eigenvalues extracted from the data.
+    scores: Scores for each profile and each principal component.
+        Shape is `(k, n)`, where `k` is the number of principal components
+        and `n` is the number of profiles.
+    dtoas: Differences between the estimated TOAs and the best-fit
+        polynomial trend.
     '''
     if initial_template is None:
         initial_template = get_template(data, n_iter=0)
@@ -87,7 +95,7 @@ def extract_pcs(
     toas = estimator.estimate_toas(data).toa
 
     # Fit polynomial trend (if use_trend=False, this is only used for dtoas)
-    trend_coeffs = np.polyfit(data.profile_number, toas, 1)
+    trend_coeffs = np.polyfit(data.profile_number, toas, trend_order)
     trend = np.polyval(trend_coeffs, data.profile_number)
 
     # Align profiles
@@ -101,12 +109,19 @@ def extract_pcs(
     # Compute profile residuals
     resids = np.empty_like(data.profiles)
     template = np.mean(profiles_aligned, axis=0)
+    columns = [template]
+    if remove_baseline:
+        columns.append(np.ones_like(template))
+    design_matrix = np.array(columns).T
     for j, profile in enumerate(profiles_aligned):
-        ampl = np.dot(profile, template)/np.dot(template, template)
-        resids[j] = profile - ampl*template
+        params = linalg.solve(
+            design_matrix.T @ design_matrix,
+            design_matrix.T @ profile,
+        )
+        resids[j] = profile - design_matrix @ params
 
     # Find principal components using Scipy SVD
-    u, s, pcs = svd(resids, full_matrices=return_all)
+    u, s, pcs = linalg.svd(resids, full_matrices=return_all)
     if not return_all:
         u, s, pcs = u[:,:n_pcs], s[:n_pcs], pcs[:n_pcs,:]
 

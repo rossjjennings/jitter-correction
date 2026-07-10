@@ -98,15 +98,25 @@ class TemplateMatchingAnalysis(Analysis):
         return estimator.estimate_toas(data)
 
 class PCMatchingAnalysis(Analysis):
-    def __init__(self, n_pcs: int, use_trend: bool = True):
+    def __init__(
+        self,
+        n_pcs: int,
+        use_trend: bool = True,
+        trend_order: int = 1,
+        remove_baseline: bool = True,
+    ):
         self.n_pcs = n_pcs
         self.use_trend = use_trend
+        self.trend_order = trend_order
+        self.remove_baseline = remove_baseline
 
     def train(self, training_data: ProfileData) -> PrincipalComponentModel:
         pca_model, scores, dtoas = extract_pcs(
             training_data,
             n_pcs=self.n_pcs,
             use_trend=self.use_trend,
+            trend_order=self.trend_order,
+            remove_baseline=self.remove_baseline,
         )
         return pca_model
 
@@ -119,11 +129,26 @@ class PCMatchingAnalysis(Analysis):
         return estimator.estimate_toas(data)
 
 class PCBayesianAnalysis(Analysis):
-    def __init__(self, n_pcs: int):
+    def __init__(
+        self,
+        n_pcs: int,
+        use_trend: bool = True,
+        trend_order: int = 1,
+        remove_baseline: bool = True,
+    ):
         self.n_pcs = n_pcs
+        self.use_trend = use_trend
+        self.trend_order = trend_order
+        self.remove_baseline = remove_baseline
 
     def train(self, training_data: ProfileData) -> PrincipalComponentModel:
-        pca_model, scores, dtoas = extract_pcs(training_data, n_pcs=self.n_pcs)
+        pca_model, scores, dtoas = extract_pcs(
+            training_data,
+            n_pcs=self.n_pcs,
+            use_trend=self.use_trend,
+            trend_order=self.trend_order,
+            remove_baseline=self.remove_baseline,
+        )
         return pca_model
 
     def get_toas(
@@ -144,14 +169,25 @@ class PCRegressionModel(Hdf5Serializable):
         yield self.coeffs
 
 class PCRegressionAnalysis(Analysis):
-    def __init__(self, n_pcs: int):
+    def __init__(
+        self,
+        n_pcs: int,
+        use_trend: bool = False,
+        trend_order: int = 1,
+        remove_baseline: bool = True,
+    ):
         self.n_pcs = n_pcs
+        self.use_trend = use_trend
+        self.trend_order = trend_order
+        self.remove_baseline = remove_baseline
 
     def train(self, data: ProfileData) -> PCRegressionModel:
         pca_model, scores, dtoas = extract_pcs(
             data,
             n_pcs=self.n_pcs,
-            use_trend=False,
+            use_trend=self.use_trend,
+            trend_order=self.trend_order,
+            remove_baseline=self.remove_baseline,
         )
         coeffs = np.linalg.solve(scores @ scores.T, scores @ dtoas)
         return PCRegressionModel(pca_model, coeffs)
