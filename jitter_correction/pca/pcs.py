@@ -7,6 +7,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy import linalg
 from dataclasses import dataclass
+from loguru import logger
 
 from ..signal import fft_roll
 from ..toas import TemplateMatchingEstimator
@@ -35,6 +36,10 @@ class PrincipalComponentModel(NpzSerializable, Hdf5Serializable):
     pcs: np.ndarray
     eigvals: np.ndarray
 
+    @property
+    def n_pcs(self) -> int:
+        return self.pcs.shape[0]
+
     def truncate(self, n_pcs: int | np.integer) -> PrincipalComponentModel:
         '''
         Return a new `PrincipalComponentModel` with a truncated list of
@@ -49,7 +54,7 @@ class PrincipalComponentModel(NpzSerializable, Hdf5Serializable):
 
 def extract_pcs(
         data: ProfileData,
-        n_pcs: int | np.integer,
+        n_pcs: int | np.integer | None,
         initial_template: np.ndarray | None = None,
         return_all: bool = False,
         use_trend: bool | np.bool_ = True,
@@ -65,6 +70,7 @@ def extract_pcs(
     ------
     data: ProfileData object containing the profiles.
     n_pcs: The number of principal components to use in the model.
+        If `None`, choose automatically based on Bayesian Information Criterion.
     n_iter: The number of iterations to perform.
     initial_template: The initial template (see above).
     return_all: Return all principal components (instead of the first `n_pcs`).
@@ -122,16 +128,36 @@ def extract_pcs(
 
     # Find principal components using Scipy SVD
     u, s, pcs = linalg.svd(resids, full_matrices=return_all)
-    if not return_all:
-        u, s, pcs = u[:,:n_pcs], s[:n_pcs], pcs[:n_pcs,:]
+    logger.debug("pcs shape: {}", pcs.shape)
+    eigvals = s**2/data.n_profiles
+    logger.debug("eigvals shape: {}", eigvals.shape)
+    if n_pcs is None:
+        # Use BIC to determine n_pcs automatically
+        bic_vals = []
+        for k in np.arange(eigvals.shape[0] - 1):
+            trailing_eigvals = eigvals[k:-1]
+            log_geomean = np.mean(np.log(trailing_eigvals))
+            arithmean = np.mean(trailing_eigvals)
+            n = data.n_profiles
+            p = eigvals.shape[0] - 1
+            bic = -n*(p - k)*(log_geomean - np.log(arithmean))
+            bic += k/2*(2*p - k + 1)*np.log(n)
+            bic_vals.append(bic)
+        bic_vals = np.array(bic_vals)
+        n_pcs = np.argmin(bic_vals)
+        logger.info("Found {} significant PCs using BIC", n_pcs)
+    if return_all:
+        n_pcs = eigvals.shape[0]
+    eigvals, pcs = eigvals[:n_pcs], pcs[:n_pcs,:]
+    logger.debug("pcs shape after truncation: {}", pcs.shape)
+    logger.debug("eigvals shape after truncation: {}", eigvals.shape)
 
     # Compute return values
     scores = np.dot(pcs, profiles_aligned.T)
     dtoas = toas - trend
-    eigvals = s**2/data.n_profiles
     model = PrincipalComponentModel(data.phase, template, pcs, eigvals)
 
-    return model, scores, dtoas
+    return model, scores, dtoas, bic_vals
 
 def plot_pcs(
         model: PrincipalComponentModel,
