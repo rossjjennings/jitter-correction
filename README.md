@@ -30,7 +30,7 @@ pip install git+https://github.com/rossjjennings/jitter-correction
 ```
 With this install method, `pip` should locate and install compatible versions of the dependencies automatically, but they may not be the same versions used in the `pixi` environment.
 ## Use
-The `jitter-correction` package is meant to be used as a library in Python scripts and Jupyter notebooks. There are two main APIs: a high-level Analysis API and a lower-level Estimator API. An example of using the high-level Analysis API is the following, which, up to the choice of random seed, replicates the first panel of Figure 2 in the paper:
+The `jitter-correction` package is meant to be used as a library in Python scripts and Jupyter notebooks. There are two main APIs: a high-level Analysis API and a lower-level Estimator API. An example of using the high-level Analysis API is the following, which, up to the choice of random seed, replicates the first panel of Figure 4 in the paper:
 
 ```python
 import numpy as np
